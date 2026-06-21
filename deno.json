@@ -1,0 +1,21 @@
+{
+	"name": "@ts-series/factories",
+	"version": "1.1.0",
+	"description": "A lightweight TypeScript DSL for generating HTML, SVG and MathML server-side without a template engine.",
+	"license": "Unlicense",
+	"exports": {
+		".": "./src/index.ts",
+		"./svg": "./src/svg.ts",
+		"./mathml": "./src/mathml.ts"
+	},
+	"compilerOptions": {
+		"strict": true,
+		"checkJs": true,
+		"moduleResolution": "bundler"
+	},
+	"lint": {
+		"rules": {
+			"exclude": ["no-sloppy-imports"]
+		}
+	}
+}
