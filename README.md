@@ -100,6 +100,10 @@ However, such post-construction manipulation is not actually required, since mar
 
 A complete list of available methods can be found in the [Reference](https://github.com/ts-series/factories/blob/main/REFERENCE.md).
 
+## Changelog
+
+See [CHANGELOG.md](https://github.com/ts-series/factories/blob/main/CHANGELOG.md) for version history.
+
 ## Internals
 
 Exceptions are not thrown. Instead, necessary type conversions get performed to enable error-free expansion into valid HTML as far as possible, regardless of what values are passed.

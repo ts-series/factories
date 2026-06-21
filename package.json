@@ -2,11 +2,29 @@
 	"name": "@ts-series/factories",
 	"version": "1.1.0",
 	"description": "A lightweight TypeScript DSL for generating HTML, SVG and MathML server-side without a template engine.",
-	"type": "module",
+	"keywords": [
+		"domain-specific",
+		"dsl",
+		"html",
+		"language",
+		"mathml",
+		"svg",
+		"template"
+	],
 	"author": "Enrico Rippin",
-	"license": "Unlicense",
 	"engines": {
 		"node": ">=18"
+	},
+	"type": "module",
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "rm -rf dist && tsc",
+		"prepublishOnly": "npm run build"
+	},
+	"devDependencies": {
+		"typescript": "^5.7.0"
 	},
 	"exports": {
 		".": {
@@ -22,23 +40,13 @@
 			"default": "./dist/mathml.js"
 		}
 	},
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/ts-series/factories.git"
-	},
 	"files": [
 		"dist",
 		"README.md"
 	],
-	"keywords": [
-		"domain-specific",
-		"dsl",
-		"html",
-		"language",
-		"mathml",
-		"svg",
-		"template"
-	]
+	"license": "Unlicense",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ts-series/factories.git"
+	}
 }
