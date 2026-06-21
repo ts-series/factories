@@ -10,9 +10,9 @@
 	},
 	"compilerOptions": {
 		"strict": true,
-		"checkJs": true,
-		"moduleResolution": "bundler"
+		"checkJs": true
 	},
+	"unstable": ["sloppy-imports"],
 	"lint": {
 		"rules": {
 			"exclude": ["no-sloppy-imports"]
