@@ -9,7 +9,7 @@ export type SVGElementFactory = (...content: unknown[]) => SVGElement;
 
 export class SVGElement extends Element<SVGAttributes> {
 
-	static override Symbol: Record<string, symbol> = Object.freeze({
+	static override readonly Symbol: Record<string, symbol> = Object.freeze({
 		rect: Symbol("rect"),
 		line: Symbol("line"),
 		ellipse: Symbol("ellipse"),
@@ -71,6 +71,12 @@ export class SVGElement extends Element<SVGAttributes> {
 		script: Symbol("script"),
 		circle: Symbol("circle")
 	});
+
+
+	static override RawText: Set<symbol> = new Set<symbol>([
+		SVGElement.Symbol.script,
+		SVGElement.Symbol.style
+	]);
 
 
 	/** Returns true if obj represents an SVG attributes object (not an Element or string). */
@@ -292,20 +298,6 @@ export class SVGElement extends Element<SVGAttributes> {
 	/** Sets the href attribute. */
 	href(value: string): this {
 		this.attributes.href = value;
-		return this;
-	}
-
-
-	/** Sets the id attribute. */
-	id(value: string): this {
-		this.attributes.id = value;
-		return this;
-	}
-
-
-	/** Sets the style attribute. */
-	style(value: string): this {
-		this.attributes.style = value;
 		return this;
 	}
 

@@ -1,6 +1,7 @@
 {
 	"name": "@ts-series/factories",
-	"version": "1.1.0",
+	"version": "1.2.0",
+	"license": "(0BSD OR Apache-2.0)",
 	"description": "A lightweight TypeScript DSL for generating HTML, SVG and MathML server-side without a template engine.",
 	"keywords": [
 		"domain-specific",
@@ -11,20 +12,25 @@
 		"svg",
 		"template"
 	],
-	"author": "Enrico Rippin",
 	"engines": {
-		"node": ">=18"
+		"node": ">=26"
 	},
 	"type": "module",
 	"publishConfig": {
 		"access": "public"
 	},
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"onFail": "error"
+		}
+	},
+	"devDependencies": {
+		"typescript": "^7.0.2"
+	},
 	"scripts": {
 		"build": "rm -rf dist && tsc",
 		"prepublishOnly": "npm run build"
-	},
-	"devDependencies": {
-		"typescript": "^5.7.0"
 	},
 	"exports": {
 		".": {
@@ -42,9 +48,10 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"LICENSE-0BSD",
+		"LICENSE-APACHE",
+		"CONTRIBUTING.md"
 	],
-	"license": "Unlicense",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/ts-series/factories.git"

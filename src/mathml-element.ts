@@ -11,7 +11,7 @@ export type VoidMathMLElementFactory = (attributes?: object) => MathMLElement;
 
 export class MathMLElement extends Element<MathMLAttributes> {
 
-	static override Symbol: Record<string, symbol> = Object.freeze({
+	static override readonly Symbol: Record<string, symbol> = Object.freeze({
 		math: Symbol("math"),
 
 		// Token elements
@@ -153,27 +153,6 @@ export class MathMLElement extends Element<MathMLAttributes> {
 	/** Sets the scriptlevel attribute. */
 	scriptlevel(value: string | number): this {
 		this.attributes.scriptlevel = value;
-		return this;
-	}
-
-
-	/** Sets the id attribute. */
-	id(value: string): this {
-		this.attributes.id = value;
-		return this;
-	}
-
-
-	/** Sets the class attribute to one or more class names. */
-	class(...values: string[]): this {
-		this.attributes.class = values;
-		return this;
-	}
-
-
-	/** Sets the style attribute. */
-	style(value: string): this {
-		this.attributes.style = value;
 		return this;
 	}
 

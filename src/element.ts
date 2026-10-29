@@ -1,5 +1,5 @@
 
-import { Attributes } from './attributes.js';
+import { Attributes, escape } from './attributes.js';
 
 
 //
@@ -11,19 +11,27 @@ export class Element<Attr extends Attributes = Attributes> {
 
 	declare static Symbol: Readonly<Record<string, symbol>>;
 
-	#attributes: Attr;
-	symbol: symbol;
+	static RawText: Set<symbol> = new Set();
+
 	content: Array<Part> | null;
 
+	#attributes: Attr;
 
+
+	/** Creates an element and flattens any nested arrays in its content. */
 	constructor(
-		symbol: symbol,
+		public symbol: symbol,
 		attributes: Attr,
-		content: Array<Part> | null = null
+		content: Array<Part | Array<unknown>> | null = null
 	) {
-		this.symbol = symbol;
 		this.#attributes = attributes;
-		this.content = content;
+		this.content = content === null ? null : Element.#flatten(content);
+	}
+
+
+	/** Flattens nested arrays of parts into one array and returns the input unchanged if it contains no arrays. */
+	static #flatten(parts: Array<Part | Array<unknown>>): Array<Part> {
+		return parts.some(Array.isArray) ? parts.flat(Infinity) as Array<Part> : parts as Array<Part>;
 	}
 
 
@@ -144,18 +152,18 @@ export class Element<Attr extends Attributes = Attributes> {
 	}
 
 
-	/** Appends one or more parts to the element's content, or does nothing if the element is void. */
-	append(...elements: Part[]): Element {
+	/** Appends one or more parts to the element's content, flattening nested arrays, or does nothing if the element is void. */
+	append(...elements: Array<Part | Array<unknown>>): Element {
 		if (Array.isArray(this.content)) {
-			this.content.push(...elements);
+			this.content.push(...Element.#flatten(elements));
 		}
 		return this;
 	}
 
 
-	/** Inserts a part at the given index, or does nothing if the element is void. */
-	insertAt(index: number, element: Part): Element {
-		this.content?.splice(index, 0, element);
+	/** Inserts a part or the flattened parts of an array at the given index, or does nothing if the element is void. */
+	insertAt(index: number, element: Part | Array<unknown>): Element {
+		this.content?.splice(index, 0, ...Element.#flatten([element]));
 		return this;
 	}
 
@@ -163,6 +171,49 @@ export class Element<Attr extends Attributes = Attributes> {
 	/** Replaces the content array using the given function, or does nothing if the element is void. */
 	modifyContent(fn: (parts: Array<Part>) => Array<Part>): Element {
 		if (this.content) this.content = fn(this.content);
+		return this;
+	}
+
+
+	// SETTERS FOR GLOBAL ATTRIBUTES
+
+	/** Sets the class attribute to one or more class names, ignoring false, null and undefined values. */
+	class(...values: (string | false | null | undefined)[]): this {
+		(this.attributes as Attributes).class = values.filter((v): v is string => typeof v === "string");
+		return this;
+	}
+
+
+	/** Sets the id attribute. */
+	id(value: string | null | undefined): this {
+		(this.attributes as Attributes).id = value;
+		return this;
+	}
+
+
+	/** Sets the itemprop attribute. */
+	itemprop(value: string | null | undefined): this {
+		(this.attributes as Attributes).itemprop = value;
+		return this;
+	}
+
+
+	/** Sets the itemscope attribute, optionally with an itemtype URL. */
+	itemscope(itemtype?: string): this {
+		(this.attributes as Attributes).itemscope = null;
+		if (itemtype) (this.attributes as Attributes).itemtype = itemtype;
+		return this;
+	}
+
+
+	/** Sets the style attribute from a string or an object of camelCase CSS properties. */
+	style(value: string | Record<string, string | number> | null | undefined): this {
+		if (value == null) {
+			(this.attributes as Attributes).style = value;
+		}
+		else {
+			(this.attributes as Attributes).style = typeof value === "string" ? value : Attributes.toCSS(value);
+		}
 		return this;
 	}
 
@@ -182,8 +233,8 @@ export class Element<Attr extends Attributes = Attributes> {
 
 	// GENERATING HTML
 
-	/** Generates the actual HTML code from the element described in JS and also expands its content; style: null → no styling, not even line breaks | negative → tab | 0 → no indent, but line breaks | positive → spaces per depth; offset: number of indentations of the outermost tag. */
-	expand(style: number | null = null, offset: number = 0): string {
+	/** Generates the actual HTML code from the element described in JS and also expands its content; style: null → no styling, not even line breaks | negative → tab | 0 → no indent, but line breaks | positive → spaces per depth; offset: number of indentations of the outermost tag; escaping: whether text content is HTML-escaped, except in raw text elements. */
+	expand(style: number | null = null, offset: number = 0, escaping: boolean = true): string {
 		const stack: string[] = [];
 	
 		this.beforeExpand(stack);
@@ -200,6 +251,7 @@ export class Element<Attr extends Attributes = Attributes> {
 			if (Array.isArray(element.content)) {
 				depth += 1;
 				const childStyle = element.suppressChildStyle(currentStyle);
+				const escapeText = escaping && !(element.constructor as typeof Element).RawText.has(element.symbol);
 	
 				for (const part of element.content) {
 					if (part == null) {
@@ -214,7 +266,7 @@ export class Element<Attr extends Attributes = Attributes> {
 						endIndent = childStyle == null ? "" : indent;
 					}
 					else {
-						stack.push(part);
+						stack.push(escapeText ? escape(part) : part);
 					}
 				}
 	
@@ -238,16 +290,17 @@ export class Element<Attr extends Attributes = Attributes> {
 	}
 
 
-	/** Expands a list of elements and joins them together; style: null → no styling, not even line breaks | negative → tab | 0 → no indent, but line breaks | positive → spaces per depth; offset: the outermost indentation for all elements in the array. */
+	/** Expands a list of elements and joins them together; style: null → no styling, not even line breaks | negative → tab | 0 → no indent, but line breaks | positive → spaces per depth; offset: the outermost indentation for all elements in the array; escaping: whether text content is HTML-escaped. */
 	static expandAll(
 		elements: Element[],
 		style: number | null = null,
-		offset: number = 0
+		offset: number = 0,
+		escaping: boolean = true
 	): string {
 		const separator = style === null ? "" : "\n";
-
+	
 		return elements
-			.map((el) => el.expand(style, offset))
+			.map((el) => el.expand(style, offset, escaping))
 			.join(separator);
 	}
 }

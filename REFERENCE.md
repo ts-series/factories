@@ -2,30 +2,31 @@
 
 ## Table of Contents
 
-- [Elements](#elements)
-  - [Non-Void Elements](#non-void-elements)
-  - [Void Elements](#void-elements)
-  - [Special Factories](#special-factories)
-- [SVG](#svg)
-- [MathML](#mathml)
-- [Attributes](#attributes)
-  - [Passing Attributes](#passing-attributes)
-  - [Attribute Methods](#attribute-methods)
-  - [Boolean Attributes](#boolean-attributes)
-  - [Data Attributes](#data-attributes)
-  - [Event Handlers](#event-handlers)
-- [Expansion](#expansion)
-  - [expand()](#expand)
-  - [Sibling Elements](#sibling-elements)
-- [Content Manipulation](#content-manipulation)
-- [Querying](#querying)
-- [Script Element](#script-element)
-- [Meta Helpers](#meta-helpers)
+1. [Elements](#1-elements)
+   1. [Non-Void Elements](#11-non-void-elements)
+   2. [Void Elements](#12-void-elements)
+   3. [Special Factories](#13-special-factories)
+2. [SVG](#2-svg)
+3. [MathML](#3-mathml)
+4. [Attributes](#4-attributes)
+   1. [Passing Attributes](#41-passing-attributes)
+   2. [Attribute Methods](#42-attribute-methods)
+   3. [Attribute Value Rules](#43-attribute-value-rules)
+   4. [Removing Attributes](#44-removing-attributes)
+   5. [Event Handlers](#45-event-handlers)
+5. [Expansion](#5-expansion)
+   1. [expand()](#51-expand)
+   2. [Sibling Elements](#52-sibling-elements)
+6. [Content Manipulation](#6-content-manipulation)
+7. [Querying](#7-querying)
+8. [Script Element](#8-script-element)
+9. [Meta Helpers](#9-meta-helpers)
+10. [Custom Elements and Attributes](#10-custom-elements-and-attributes)
 
 
-## Elements
+## 1. Elements
 
-### Non-Void Elements
+### 1.1 Non-Void Elements
 
 All standard non-void HTML elements are exported as factory functions. The first argument is optionally an attributes object; all remaining arguments become child content:
 
@@ -49,7 +50,7 @@ import { p, br } from 'factories'
 p("Line one", br, "Line two")
 ```
 
-### Void Elements
+### 1.2 Void Elements
 
 Void elements accept only an optional attributes object:
 
@@ -60,7 +61,7 @@ img({ src: "/logo.png", alt: "Logo" })
 hr()
 ```
 
-### Special Factories
+### 1.3 Special Factories
 
 #### `html`
 
@@ -106,7 +107,7 @@ button.submit("Send")
 button.reset("Reset")
 ```
 
-> As with all elements, behavior is attached from a separate client-side module — see [Event Handlers](#event-handlers).
+> As with all elements, behavior is attached from a separate client-side module — see [Event Handlers](#45-event-handlers).
 
 #### `input`
 
@@ -120,12 +121,10 @@ Available subtypes: `button`, `checkbox`, `color`, `date`, `datetimeLocal`, `ema
 
 #### `script`
 
-Returns an `HTMLScriptElement` — see [Script Element](#script-element).
+Returns an `HTMLScriptElement` — see [Script Element](#8-script-element).
 
 ```ts
-script({ src: "/app.js", defer: null })
-
-script({ src: "/app.js", defer: null })
+script({ src: "/app.js", defer: true })
 
 script.module({ src: "/main.js" })
 	// <script type="module" src="/main.js">
@@ -143,7 +142,7 @@ import { variable } from 'factories'
 variable("x")  // → <var>x</var>
 ```
 
-## SVG
+## 2. SVG
 
 All SVG factories can be imported directly from `factories/svg`. Alternatively, only `svg` can be imported — either from `factories` or `factories/svg` — and used as a namespace for the remaining factories, since they're attached to it as properties:
 
@@ -156,14 +155,14 @@ const icon = svg({ viewBox: "0 0 24 24", xmlns: "http://www.w3.org/2000/svg" },
 )
 ```
 
-SVG elements use `SVGElement` and `SVGAttributes` internally, so unknown attributes are never prefixed with `data-`. Chainable attribute methods cover the most common presentation attributes: `fill`, `stroke`, `strokeWidth`, `opacity`, `transform`, `cx`, `cy`, `r`, `x`, `y`, `x1`, `y1`, `x2`, `y2`, `width`, `height`, `d`, `points`, `viewBox`, `href`, and others.
+SVG elements use `SVGElement` and `SVGAttributes` internally. Chainable attribute methods cover the most common presentation attributes: `fill`, `stroke`, `strokeWidth`, `opacity`, `transform`, `cx`, `cy`, `r`, `x`, `y`, `x1`, `y1`, `x2`, `y2`, `width`, `height`, `d`, `points`, `viewBox`, `href`, and others.
 
 Available factories: `svg`, `g`, `defs`, `symbol`, `use`, `marker`, `a`, `image`, `circle`, `rect`, `line`, `ellipse`, `polyline`, `polygon`, `path`, `text`, `tspan`, `textPath`, `linearGradient`, `radialGradient`, `pattern`, `stop`, `clipPath`, `mask`, `filter`, `animate`, `animateTransform`, `animateMotion`, `set`, `title`, `desc`, `style`, `script`
 
 Filter primitives: `feBlend`, `feColorMatrix`, `feComponentTransfer`, `feComposite`, `feConvolveMatrix`, `feDiffuseLighting`, `feDisplacementMap`, `feDropShadow`, `feFlood`, `feGaussianBlur`, `feImage`, `feMerge`, `feMergeNode`, `feMorphology`, `feOffset`, `feSpecularLighting`, `feTile`, `feTurbulence`
 
 
-## MathML
+## 3. MathML
 
 Like with SVG, MathML elements live under their own subpath export, factories/mathml, with every factory available as a named export. The top-level math element doubles as a shorthand namespace, carrying the other factories as properties, for when individual imports are unwanted:
 
@@ -183,22 +182,24 @@ This namespace property can also be reached through the package root: `import { 
 Available factories: `math`, `mi`, `mn`, `mo`, `ms`, `mspace`, `mtext`, `mrow`, `mfrac`, `msqrt`, `mroot`, `mstyle`, `mpadded`, `mphantom`, `merror`, `menclose`, `mfenced`, `msub`, `msup`, `msubsup`, `munder`, `mover`, `munderover`, `mmultiscripts`, `mprescripts`, `mtable`, `mtr`, `mtd`, `maligngroup`, `malignmark`, `mstack`, `mlongdiv`, `msgroup`, `msrow`, `mscarries`, `mscarry`, `msline`, `semantics`, `annotation`, `maction`
 
 
-## Attributes
+## 4. Attributes
 
-### Passing Attributes
+### 4.1 Passing Attributes
 
-Attributes are passed as a plain object to the first argument of any factory function. Unknown keys that are not valid HTML attribute names are automatically prefixed with `data-`:
+Attributes are passed as a plain object to the first argument of any factory function:
 
 ```ts
 div({ id: "app", myCustomThing: "x" })
-// → <div id="app" data-my-custom-thing="x">
+// → <div id="app" my-custom-thing="x">
 ```
 
-Keys in `snake_case`, `camelCase`, and `PascalCase` are normalized to `kebab-case`:
+Keys in `snake_case`, `camelCase`, and `PascalCase` are normalized to `kebab-case`, with each underscore becoming exactly one hyphen:
 
 ```ts
-div({ httpEquiv: "refresh" })    // → http-equiv="refresh"
-div({ accept_charset: "utf-8" }) // → accept-charset="utf-8"
+div({ httpEquiv: "refresh" })      // → http-equiv="refresh"
+div({ accept_charset: "utf-8" })   // → accept-charset="utf-8"
+div({ ariaLabel: "Close" })        // → aria-label="Close"
+div({ dataUserId: 42 })            // → data-user-id="42"
 ```
 
 Attributes can also be added or overwritten after construction using the `set()` method:
@@ -210,7 +211,7 @@ el.set("hidden")                  // Boolean attribute by string
 el.set({ id: "main" }, "hidden")  // Multiple at once
 ```
 
-### Attribute Methods
+### 4.2 Attribute Methods
 
 All global and most element-specific attributes are available as chainable setter methods:
 
@@ -219,35 +220,58 @@ div().id("main").lang("de").tabindex(-1)
 input.text({ name: "q" }).placeholder("Search…").required()
 ```
 
-Global attribute methods: `accesskey`, `class`, `contenteditable`, `dir`, `draggable`, `enterkeyhint`, `hidden`, `id`, `inert`, `inputmode`, `lang`, `popover`, `spellcheck`, `style`, `tabindex`, `title`, `translate`
+Global attribute methods: `accesskey`, `class`, `contenteditable`, `dir`, `draggable`, `enterkeyhint`, `hidden`, `id`, `inert`, `inputmode`, `itemprop`, `itemscope`, `lang`, `popover`, `spellcheck`, `style`, `tabindex`, `title`, `translate`
 
 Element-specific attribute methods: `alt`, `autofocus`, `charset`, `checked`, `cols`, `colspan`, `disabled`, `for`, `formnovalidate`, `height`, `href`, `max`, `min`, `multiple`, `name`, `placeholder`, `readonly`, `required`, `rows`, `rowspan`, `selected`, `size`, `src`, `step`, `type`, `value`, `width`
 
-### Boolean Attributes
-
-A value of `null` renders the attribute without a value:
+Every attribute setter accepts `undefined` to remove the attribute; boolean-attribute setters (`autofocus`, `checked`, `disabled`, `formnovalidate`, `hidden`, `multiple`, `popover`, `readonly`, `required`, `selected`) take an optional boolean argument, defaulting to `true`.
 
 ```ts
-input.checkbox({ name: "agree", checked: null })
+div().style({ color: "red", fontSize: "1rem" })
+p().itemscope("https://schema.org/Person").itemprop("name")
+```
+
+### 4.3 Attribute Value Rules
+
+Attribute values follow a consistent set of rules, applied both when passing a plain object and when using a setter method:
+
+- `undefined` removes the attribute entirely.
+- `null` or an empty string `""` sets a non-boolean attribute without a value (`attr=""`).
+- Boolean HTML attributes (such as `checked`, `disabled`, `hidden`, `readonly`, `required`, `selected`, …) are set without a value when `true` or `null`, and removed entirely when `false` or `undefined`.
+- Arrays are joined with spaces into a single attribute value.
+- A plain object assigned to `style` is converted into an inline CSS string automatically. Keys are normalized like attribute names, so a `__` prefix produces a custom property.
+- Any other value is converted to a string using `String()`.
+
+```ts
+input.checkbox({ name: "agree", checked: true })
 // → <input type="checkbox" name="agree" checked>
+
+input.checkbox({ name: "agree", checked: false })
+// → <input type="checkbox" name="agree">
+
+div({ title: null })
+// → <div title="">
+
+div({ style: { color: "red", fontSize: "1rem" } })
+// → <div style="color: red; font-size: 1rem;">
+
+div({ style: { __icon: "url(/icons/home.svg)" } })
+// → <div style="--icon: url(/icons/home.svg);">
 ```
 
-Methods for boolean attributes accept an optional `boolean` argument (default `true`) and add the attribute only if it is truthy:
+Custom property names are always lowercased, so uppercase letters cannot be preserved: Use kebab-case names in the stylesheet.
+
+### 4.4 Removing Attributes
+
+Attributes can be removed explicitly, independent of the value rules above:
 
 ```ts
-input.text({ name: "q" }).required(isRequired)
+const el = div({ id: "main", hidden: true })
+el.attributes.remove("hidden")               // removes a single attribute
+el.attributes.removeMany("id", "hidden")     // removes multiple attributes at once
 ```
 
-### Data Attributes
-
-Any key starting with `data` or unknown to the HTML attribute list is automatically prefixed with `data-` during expansion:
-
-```ts
-div({ dataUserId: 42 }) // → data-user-id="42"
-div({ fooBar: "x" })    // → data-foo-bar="x"
-```
-
-### Event Handlers
+### 4.5 Event Handlers
 
 Factories.ts does not provide `onclick` / `onmouseover` / etc. methods or attribute helpers for inline event handlers. Embedding JavaScript as strings inside HTML attributes breaks the separation between markup and behavior, defeats bundling and tree-shaking, ultimately complicates Content-Security-Policy setups that disallow inline scripts.
 
@@ -274,9 +298,9 @@ button("Click").set({ onclick: "doSomething()" })
 ```
 
 
-## Expansion
+## 5. Expansion
 
-### expand()
+### 5.1 `expand()`
 
 Converts the element tree to an HTML string. Called without arguments, it produces compact output with no whitespace between tags:
 
@@ -312,7 +336,7 @@ Phrasing-content elements (`span`, `p`, `a`, `strong`, `em`, `td`, `th`, etc.) n
 
 `expand()` on the `html` element automatically prepends `<!DOCTYPE html>`.
 
-### Sibling Elements
+### 5.2 Sibling Elements
 
 To expand multiple sibling elements without a wrapping parent — for example when returning an HTML partial — use `HTMLElement.expandAll()`:
 
@@ -330,7 +354,7 @@ static expandAll(elements: HTMLElement[], style?: number | null, offset?: number
 ```
 
 
-## Content Manipulation
+## 6. Content Manipulation
 
 Methods for modifying an element's content after construction. All return `this` for chaining unless noted.
 
@@ -358,7 +382,7 @@ div(() => expensiveElement())
 ```
 
 
-## Querying
+## 7. Querying
 
 `find()` performs a depth-first search for the first descendant (or self) matching a predicate:
 
@@ -375,7 +399,7 @@ elements.filter(el => "data-id" in el.attributes)
 ```
 
 
-## Script Element
+## 8. Script Element
 
 `script()` returns an `HTMLScriptElement` with additional methods for generating inline JavaScript. All methods return `this`.
 
@@ -423,7 +447,7 @@ script.module().importOnly("/app.js", "main")
 ```
 
 
-## Meta Helpers
+## 9. Meta Helpers
 
 #### `meta.tags(attributes)`
 
@@ -453,3 +477,26 @@ Available namespaced variants:
 | `meta.og.product` | `product` |
 | `meta.og.audio` | `og:audio` |
 | `meta.og.video` | `og:video` |
+
+
+## 10. Custom Elements and Attributes
+
+Elements outside the built-in HTML/SVG/MathML sets can be registered at runtime using `define`, useful for Web Components:
+
+```ts
+import { HTMLElement, type HTMLElementFactory } from 'factories'
+
+const myWidget: HTMLElementFactory = HTMLElement.NonVoid(HTMLElement.define("my-widget"))
+
+myWidget({ name: "og:title", "content-type": "text" }, "Hello")
+// → <my-widget name="og:title" content-type="text">Hello</my-widget>
+```
+
+`HTMLAttributes.define()` registers a custom attribute name, useful for marking it as a boolean attribute or for having it recognized by `hasAttr()` when it is passed as the sole argument to an element factory:
+
+```ts
+HTMLAttributes.define("my-flag");
+// HTMLAttributes.Boolean now includes "my-flag"
+```
+
+`define` is idempotent: calling it again with an already-registered name simply returns the existing symbol instead of throwing or overwriting it.

@@ -1,15 +1,19 @@
+bin/
+build/
+dist/
+node_modules/
+
 # HIDDEN SOURCE FILES
 .*.ts
+
+# CACHES AND LOGS
+*.tsbuildinfo
+*.log
 
 # ENVIRONMENT
 .env
 .env.*
-
-# EDITORS
-.vscode/
+!.env.example
 
 # TOOLS
-.deno/
-
-# BUILDING
-dist/
+.vscode/

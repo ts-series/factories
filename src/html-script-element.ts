@@ -15,17 +15,21 @@ export type TransferableValue =
 	| { [key: string]: TransferableValue };
 
 
+/** Returns a JavaScript string literal for the given text that is safe inside a script element. */
+function transferString(text: string): string {
+	return JSON.stringify(text).replace(/</g, "\\u003c");
+}
+
+
+/** Converts a transferable value into JavaScript source code that is safe inside a script element. */
 function transferValue(value: TransferableValue): string {
 	switch (typeof value) {
 		case "string":
-			return `"${value}"`;
+			return transferString(value);
 
 		case "number":
 		case "boolean":
 			return String(value);
-
-		case "undefined":
-			return "undefined";
 
 		case "object":
 			if (value === null) {
@@ -36,13 +40,13 @@ function transferValue(value: TransferableValue): string {
 			}
 			else {
 				return `{${Object.entries(value)
-					.map(([k, v]) => `"${k}": ${transferValue(v)}`)
+					.map(([k, v]) => `${transferString(k)}: ${transferValue(v)}`)
 					.join(", ")}}`;
 			}
-	}
 
-	// Fallback — should not be hit:
-	return "undefined";
+		default:
+			return "undefined";
+	}
 }
 
 

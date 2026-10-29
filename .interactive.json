@@ -1,5 +1,0 @@
-{
-	"monitored_dirs": ["src", "test"],
-	"program": "node",
-	"args": "--experimental-strip-types ./test/test.ts"
-}
