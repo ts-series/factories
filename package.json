@@ -30,7 +30,7 @@
 	},
 	"scripts": {
 		"build": "rm -rf dist && tsc",
-		"prepublishOnly": "npm run build"
+		"prepublishOnly": "pnpm run build"
 	},
 	"exports": {
 		".": {
