@@ -6,17 +6,19 @@
    1. [Non-Void Elements](#11-non-void-elements)
    2. [Void Elements](#12-void-elements)
    3. [Special Factories](#13-special-factories)
+   4. [Child Content Rules](#14-child-content-rules)
 2. [SVG](#2-svg)
 3. [MathML](#3-mathml)
 4. [Attributes](#4-attributes)
    1. [Passing Attributes](#41-passing-attributes)
    2. [Attribute Methods](#42-attribute-methods)
    3. [Attribute Value Rules](#43-attribute-value-rules)
-   4. [Removing Attributes](#44-removing-attributes)
+   4. [Reading, Assigning and Removing](#44-reading-assigning-and-removing)
    5. [Event Handlers](#45-event-handlers)
 5. [Expansion](#5-expansion)
    1. [expand()](#51-expand)
    2. [Sibling Elements](#52-sibling-elements)
+   3. [Escaping](#53-escaping)
 6. [Content Manipulation](#6-content-manipulation)
 7. [Querying](#7-querying)
 8. [Script Element](#8-script-element)
@@ -38,9 +40,21 @@ div({ id: "main" },
 )
 ```
 
-Arguments that are not strings or `HTMLElement` instances are converted via `.toString()`.
+If the first argument is a plain object (prototype `Object.prototype`), it is always treated as attributes, regardless of its keys. Class instances such as `Date`, or objects with their own `toString()`, are content.
 
-`null` and `undefined` children are silently skipped during expansion.
+Other arguments that are not strings or elements are converted with `String()`, so overriding `toString()` controls their output. Strings and converted values are text and get HTML-escaped during expansion, see [Escaping](#53-escaping).
+
+Nested arrays are flattened automatically, so lists of elements can be passed directly without spreading:
+
+```ts
+ul(items.map(item => li(item.name)))
+```
+
+`null`, `undefined` and booleans are skipped during expansion, so conditions can be written inline:
+
+```ts
+ul(li("A"), cond && li("B"))
+```
 
 Since the content parameter is a rest parameter, a child element that takes no attributes and no content can be passed without being called:
 
@@ -76,23 +90,23 @@ Expansion automatically prepends `<!DOCTYPE html>`.
 
 #### `head`
 
-Automatically inserts `<meta charset="UTF-8">` as the first child:
+Automatically inserts `<meta charset="utf-8">` as the first child:
 
 ```ts
 head(title("My Page"), link({ rel: "stylesheet", href: "/style.css" }))
-// → <head><meta charset="UTF-8"><title>My Page</title>...
+// → <head><meta charset="utf-8"><title>My Page</title>...
 ```
 
 #### `a`
 
-Accepts a URL string as the first argument as shorthand for `{ href: "..." }`:
+Accepts a URL string as the first argument as shorthand for `{ href: "..." }`. The shorthand applies only if the first two arguments are strings:
 
 ```ts
 a("/about", "About")
 // → <a href="/about">About</a>
 ```
 
-`a.blank` is a variant that presets `target="_blank" rel="noopener noreferrer"`:
+`a.blank` is a variant that always sets `target="_blank" rel="noopener noreferrer"`:
 
 ```ts
 a.blank("https://example.com", "External")
@@ -100,18 +114,19 @@ a.blank("https://example.com", "External")
 
 #### `button`
 
-Variants with a preset `type` attribute:
+`button` defaults to `type="button"`, which can be overridden. The variants always set their `type`:
 
 ```ts
+button("Plain")
 button.submit("Send")
 button.reset("Reset")
 ```
 
-> As with all elements, behavior is attached from a separate client-side module — see [Event Handlers](#45-event-handlers).
+> As with all elements, behavior is attached from a separate client-side module, see [Event Handlers](#45-event-handlers).
 
 #### `input`
 
-Accepts an attributes object and an optional boolean `required` flag:
+Accepts an attributes object and an optional boolean `required` flag. `input` defaults to `type="text"`, which can be overridden. The subtypes always set their `type`:
 
 ```ts
 input.email({ name: "email", placeholder: "you@example.com" }, true)
@@ -121,16 +136,16 @@ Available subtypes: `button`, `checkbox`, `color`, `date`, `datetimeLocal`, `ema
 
 #### `script`
 
-Returns an `HTMLScriptElement` — see [Script Element](#8-script-element).
+Returns an `HTMLScriptElement`, see [Script Element](#8-script-element).
 
 ```ts
 script({ src: "/app.js", defer: true })
 
-script.module({ src: "/main.js" })
-	// <script type="module" src="/main.js">
+script.module().src("/main.js")
+	// <script type="module" src="/main.js"></script>
 
 script.importmap({ react: "https://esm.sh/react" })
-	// <script type="importmap">{"imports": {"react": "https://esm.sh/react"}}</script>
+	// <script type="importmap">{"imports":{"react":"https://esm.sh/react"}}</script>
 ```
 
 #### `variable`
@@ -142,29 +157,60 @@ import { variable } from 'factories'
 variable("x")  // → <var>x</var>
 ```
 
+### 1.4 Child Content Rules
+
+Children are processed during `expand()`, in this order:
+
+| Child | Result |
+|---|---|
+| `null`, `undefined`, `true`, `false` | Skipped |
+| Function | Called without args until it returns a non-function; result follows these rules |
+| Array or iterable | Flattened on creation, `append` and `insertAt`; entries follow these rules |
+| Element | Expanded with attributes, children and closing tag |
+| Anything else | Converted with `String()`, written as escaped text |
+
+Strings are not treated as iterables.
+
+#### Notes
+
+- "Anything else" includes strings, numbers, `bigint`, `Date`, class instances without `Symbol.iterator`, plain objects and symbols.
+- A plain object is only treated as attributes when it is the **first** argument. As a later argument it is written as `[object Object]`.
+- Class instances and objects with their own `toString()` are content, so overriding `toString()` controls their output. Instances that are iterable (`Map`, `Set`, generators, iterator helpers) are expanded entry by entry instead; call `String(obj)` first to get text.
+- All booleans are skipped, so both `cond && p("x")` and `cond || p("x")` are safe. To output the word "true", pass the string `"true"`.
+- Functions may return strings, numbers, `null`, elements, arrays or iterables: the result follows the table, so `p(() => "Hi")` gives `<p>Hi</p>`. Functions are called without `this`.
+- Iterables passed directly are consumed on creation. One-shot iterators returned by a function are consumed on the first `expand()`.
+- A function that always returns a function never terminates.
+- Text in `script` and `style` elements is not escaped. With `expand(..., false)` no text is escaped.
+- Strings containing markup are text and never parsed. To embed markup, build elements, or expand a fragment first and pass `escaping = false` (see [Escaping](#53-escaping)).
+
+
 ## 2. SVG
 
-All SVG factories can be imported directly from `factories/svg`. Alternatively, only `svg` can be imported — either from `factories` or `factories/svg` — and used as a namespace for the remaining factories, since they're attached to it as properties:
+All SVG factories can be imported from `factories/svg`. Alternatively, only `svg` can be imported and used as a namespace for the remaining factories, since they are attached to it as properties:
 
 ```ts
-import { svg, circle, path } from 'factories/svg'
+import { svg, circle } from 'factories/svg'
 
 const icon = svg({ viewBox: "0 0 24 24", xmlns: "http://www.w3.org/2000/svg" },
-    circle({ cx: 12, cy: 12, r: 10, fill: "none", stroke: "currentColor", "stroke-width": 2 }),
-    svg.path({ d: "M12 8v4l3 3", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round" })
+    circle({ cx: 12, cy: 12, r: 10, fill: "none", stroke: "currentColor", strokeWidth: 2 }),
+    svg.path({ d: "M12 8v4l3 3", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" })
 )
 ```
 
 SVG elements use `SVGElement` and `SVGAttributes` internally. Chainable attribute methods cover the most common presentation attributes: `fill`, `stroke`, `strokeWidth`, `opacity`, `transform`, `cx`, `cy`, `r`, `x`, `y`, `x1`, `y1`, `x2`, `y2`, `width`, `height`, `d`, `points`, `viewBox`, `href`, and others.
 
-Available factories: `svg`, `g`, `defs`, `symbol`, `use`, `marker`, `a`, `image`, `circle`, `rect`, `line`, `ellipse`, `polyline`, `polygon`, `path`, `text`, `tspan`, `textPath`, `linearGradient`, `radialGradient`, `pattern`, `stop`, `clipPath`, `mask`, `filter`, `animate`, `animateTransform`, `animateMotion`, `set`, `title`, `desc`, `style`, `script`
+The content of the SVG `script` and `style` elements is raw text and never escaped. SVG output is intended for embedding in HTML.
 
-Filter primitives: `feBlend`, `feColorMatrix`, `feComponentTransfer`, `feComposite`, `feConvolveMatrix`, `feDiffuseLighting`, `feDisplacementMap`, `feDropShadow`, `feFlood`, `feGaussianBlur`, `feImage`, `feMerge`, `feMergeNode`, `feMorphology`, `feOffset`, `feSpecularLighting`, `feTile`, `feTurbulence`
+Available factories: `svg`, `g`, `defs`, `symbol`, `use`, `marker`, `view`, `switch`, `a`, `image`, `foreignObject`, `circle`, `rect`, `line`, `ellipse`, `polyline`, `polygon`, `path`, `text`, `tspan`, `textPath`, `linearGradient`, `radialGradient`, `pattern`, `stop`, `clipPath`, `mask`, `filter`, `animate`, `animateTransform`, `animateMotion`, `mpath`, `set`, `title`, `desc`, `metadata`, `style`, `script`
+
+Since `switch` is a JavaScript keyword, the standalone export is named `switch_`; as a property it is `svg.switch`.
+
+Filter primitives: `feBlend`, `feColorMatrix`, `feComponentTransfer`, `feComposite`, `feConvolveMatrix`, `feDiffuseLighting`, `feDisplacementMap`, `feDistantLight`, `feDropShadow`, `feFlood`, `feFuncA`, `feFuncB`, `feFuncG`, `feFuncR`, `feGaussianBlur`, `feImage`, `feMerge`, `feMergeNode`, `feMorphology`, `feOffset`, `fePointLight`, `feSpecularLighting`, `feSpotLight`, `feTile`, `feTurbulence`
 
 
 ## 3. MathML
 
-Like with SVG, MathML elements live under their own subpath export, factories/mathml, with every factory available as a named export. The top-level math element doubles as a shorthand namespace, carrying the other factories as properties, for when individual imports are unwanted:
+Like SVG, MathML elements live under their own subpath export, `factories/mathml`, with every factory available as a named export. The top-level `math` element doubles as a shorthand namespace carrying the other factories as properties:
 
 ```ts
 import { math } from 'factories/mathml'
@@ -177,9 +223,9 @@ const formula = math(
 )
 ```
 
-This namespace property can also be reached through the package root: `import { math } from 'factories'`.
+The package root exports an HTML `math` element, which is not the MathML namespace.
 
-Available factories: `math`, `mi`, `mn`, `mo`, `ms`, `mspace`, `mtext`, `mrow`, `mfrac`, `msqrt`, `mroot`, `mstyle`, `mpadded`, `mphantom`, `merror`, `menclose`, `mfenced`, `msub`, `msup`, `msubsup`, `munder`, `mover`, `munderover`, `mmultiscripts`, `mprescripts`, `mtable`, `mtr`, `mtd`, `maligngroup`, `malignmark`, `mstack`, `mlongdiv`, `msgroup`, `msrow`, `mscarries`, `mscarry`, `msline`, `semantics`, `annotation`, `maction`
+Available factories: `math`, `mglyph`, `mi`, `mn`, `mo`, `ms`, `mspace`, `mtext`, `mrow`, `mfrac`, `msqrt`, `mroot`, `mstyle`, `mpadded`, `mphantom`, `merror`, `menclose`, `mfenced`, `msub`, `msup`, `msubsup`, `munder`, `mover`, `munderover`, `mmultiscripts`, `mprescripts`, `none`, `mtable`, `mlabeledtr`, `mtr`, `mtd`, `maligngroup`, `malignmark`, `mstack`, `mlongdiv`, `msgroup`, `msrow`, `mscarries`, `mscarry`, `msline`, `semantics`, `annotation`, `annotationXml`, `maction`
 
 
 ## 4. Attributes
@@ -193,38 +239,53 @@ div({ id: "app", myCustomThing: "x" })
 // → <div id="app" my-custom-thing="x">
 ```
 
-Keys in `snake_case`, `camelCase`, and `PascalCase` are normalized to `kebab-case`, with each underscore becoming exactly one hyphen:
+Keys in `snake_case`, `camelCase`, and `PascalCase` are normalized to `kebab-case`, with each underscore becoming exactly one hyphen. Keys that are registered in the symbol lists use their exact registered spelling:
 
 ```ts
 div({ httpEquiv: "refresh" })      // → http-equiv="refresh"
 div({ accept_charset: "utf-8" })   // → accept-charset="utf-8"
 div({ ariaLabel: "Close" })        // → aria-label="Close"
 div({ dataUserId: 42 })            // → data-user-id="42"
+svg({ xlinkHref: "#a" })           // → xlink:href="#a"
 ```
+
+All WAI-ARIA attributes are known in camelCase (`ariaLabel`, `ariaHidden`, `ariaLabelledby`, ...). The camelCase keys are the lowercase ARIA names with a capital letter after `aria`, for example `ariaLabelledby` and not `ariaLabelledBy`. ARIA attributes and `role` are shared by HTML, SVG and MathML.
 
 Attributes can also be added or overwritten after construction using the `set()` method:
 
 ```ts
 const el = div("Hello")
 el.set({ id: "main" })
-el.set("hidden")                  // Boolean attribute by string
-el.set({ id: "main" }, "hidden")  // Multiple at once
+el.set("hidden")                  // attribute without a value, by name
+el.set({ id: "main" }, "hidden")  // multiple at once
 ```
 
 ### 4.2 Attribute Methods
 
-All global and most element-specific attributes are available as chainable setter methods:
+Nearly all attributes are available as chainable setter methods:
 
 ```ts
 div().id("main").lang("de").tabindex(-1)
 input.text({ name: "q" }).placeholder("Search…").required()
 ```
 
-Global attribute methods: `accesskey`, `class`, `contenteditable`, `dir`, `draggable`, `enterkeyhint`, `hidden`, `id`, `inert`, `inputmode`, `itemprop`, `itemscope`, `lang`, `popover`, `spellcheck`, `style`, `tabindex`, `title`, `translate`
+Setters accept `undefined` to remove the attribute. Boolean attribute setters (`allowfullscreen`, `async`, `autofocus`, `autoplay`, `checked`, `controls`, `default`, `defer`, `disabled`, `formnovalidate`, `inert`, `ismap`, `loop`, `multiple`, `muted`, `novalidate`, `open`, `playsinline`, `readonly`, `required`, `reversed`, `selected`) set the attribute when called without an argument or with `true`, and remove it with `false` or `undefined`.
 
-Element-specific attribute methods: `alt`, `autofocus`, `charset`, `checked`, `cols`, `colspan`, `disabled`, `for`, `formnovalidate`, `height`, `href`, `max`, `min`, `multiple`, `name`, `placeholder`, `readonly`, `required`, `rows`, `rowspan`, `selected`, `size`, `src`, `step`, `type`, `value`, `width`
+`hidden` and `popover` work the same way, and additionally accept a keyword string:
 
-Every attribute setter accepts `undefined` to remove the attribute; boolean-attribute setters (`autofocus`, `checked`, `disabled`, `formnovalidate`, `hidden`, `multiple`, `popover`, `readonly`, `required`, `selected`) take an optional boolean argument, defaulting to `true`.
+```ts
+div().hidden()                 // → hidden=""
+div().hidden("until-found")    // → hidden="until-found"
+div().popover("manual")        // → popover="manual"
+```
+
+List setters (`class`, `role`, `part`, `headers`, `rel`, `sandbox`) take any number of values and ignore `false`, `null`, `undefined` and empty strings, so conditions can be written inline:
+
+```ts
+button("Send").class("primary", disabled && "disabled")
+```
+
+`style` accepts a string or an object of camelCase CSS properties:
 
 ```ts
 div().style({ color: "red", fontSize: "1rem" })
@@ -233,14 +294,20 @@ p().itemscope("https://schema.org/Person").itemprop("name")
 
 ### 4.3 Attribute Value Rules
 
-Attribute values follow a consistent set of rules, applied both when passing a plain object and when using a setter method:
+The same rules apply whether a value is passed in an attributes object, through `set()`, a setter method or by assigning to `attributes`. They are evaluated per value, in this order:
 
-- `undefined` removes the attribute entirely.
-- `null` or an empty string `""` sets a non-boolean attribute without a value (`attr=""`).
-- Boolean HTML attributes (such as `checked`, `disabled`, `hidden`, `readonly`, `required`, `selected`, …) are set without a value when `true` or `null`, and removed entirely when `false` or `undefined`.
-- Arrays are joined with spaces into a single attribute value.
-- A plain object assigned to `style` is converted into an inline CSS string automatically. Keys are normalized like attribute names, so a `__` prefix produces a custom property.
-- Any other value is converted to a string using `String()`.
+| Value | Result |
+|---|---|
+| `undefined` | The attribute is omitted |
+| Boolean attribute (`checked`, `disabled`, `inert`, `required`, ...) set to `false` | The attribute is omitted |
+| Boolean attribute set to anything else | The attribute is written without a value |
+| `null` or `""` | `attr=""` |
+| Array | Blank entries (`null`, `undefined`, booleans and empty strings) are removed, the rest is joined with spaces; the attribute is omitted if nothing remains |
+| Plain object on `style` | Converted into an inline CSS string, skipping `null`, `undefined` and `false` values |
+| Function | Written as a call: `fn.name()` or, for an arrow function, `(source)()` |
+| Anything else, including `false`, `true` and numbers | Converted with `String()` |
+
+The resulting text is always HTML-escaped (`&`, `<`, `>` and `"`), independent of the `escaping` parameter of `expand()`.
 
 ```ts
 input.checkbox({ name: "agree", checked: true })
@@ -252,6 +319,15 @@ input.checkbox({ name: "agree", checked: false })
 div({ title: null })
 // → <div title="">
 
+div({ hidden: null })
+// → <div hidden="">
+
+div({ title: 'Das "Beste" davon' })
+// → <div title="Das &quot;Beste&quot; davon">
+
+a("/docs", "Docs").set({ rel: ["noopener", external && "noreferrer"] })
+// → <a href="/docs" rel="noopener">Docs</a>   (external is false)
+
 div({ style: { color: "red", fontSize: "1rem" } })
 // → <div style="color: red; font-size: 1rem;">
 
@@ -259,21 +335,40 @@ div({ style: { __icon: "url(/icons/home.svg)" } })
 // → <div style="--icon: url(/icons/home.svg);">
 ```
 
-Custom property names are always lowercased, so uppercase letters cannot be preserved: Use kebab-case names in the stylesheet.
+Two points deserve attention:
 
-### 4.4 Removing Attributes
+1. **`false` is a value on non-boolean attributes.** `div({ id: false })` is written as `id="false"`, which is intended for attributes such as `ariaHidden`, `draggable` or `contenteditable`, where `"false"` has a meaning. To omit an attribute conditionally, use `undefined`: `{ title: condition ? "x" : undefined }`. The pattern `condition && "x"` is only safe inside arrays and in the list setters such as `class()`.
+2. **`hidden` and `popover` are not boolean attributes.** In an attributes object, use `null` for the bare attribute (`{ hidden: null }`) or a keyword string. `{ hidden: true }` is written as `hidden="true"`. The setters handle `true` and `false` for you.
 
-Attributes can be removed explicitly, independent of the value rules above:
+Arrays are cleaned when the attributes are expanded, not when they are assigned. Reading an array attribute back may therefore still contain blank entries.
+
+Custom property names are always lowercased, so uppercase letters cannot be preserved: use kebab-case names in the stylesheet.
+
+### 4.4 Reading, Assigning and Removing
+
+The `attributes` property is an attributes object (an instance of `HTMLAttributes`, `SVGAttributes` or `MathMLAttributes`) that exists so that attribute names never collide with the methods of the element. Single attributes can be read and written directly:
 
 ```ts
-const el = div({ id: "main", hidden: true })
-el.attributes.remove("hidden")               // removes a single attribute
-el.attributes.removeMany("id", "hidden")     // removes multiple attributes at once
+el.attributes.id            // read
+el.attributes.id = "main"   // write, same as el.id("main")
 ```
+
+Methods modelled on the DOM API:
+
+```ts
+el.hasAttribute("id")                  // true if the attribute is set
+el.getAttribute("id")                  // its value, or undefined if not set
+el.removeAttributes("hidden")          // removes a single attribute
+el.removeAttributes("id", "hidden")    // removes several at once
+```
+
+`hasAttribute` and `getAttribute` use the name exactly as it was set: `hasAttribute("aria-label")` does not find `ariaLabel`. Unlike the DOM, `getAttribute` returns `undefined` for missing attributes, because `null` is a value (`attr=""`).
+
+The `attributes` property is read-only. Use `set()` to apply several attributes at once.
 
 ### 4.5 Event Handlers
 
-Factories.ts does not provide `onclick` / `onmouseover` / etc. methods or attribute helpers for inline event handlers. Embedding JavaScript as strings inside HTML attributes breaks the separation between markup and behavior, defeats bundling and tree-shaking, ultimately complicates Content-Security-Policy setups that disallow inline scripts.
+Factories.ts does not provide `onclick` / `onmouseover` / etc. methods or attribute helpers for inline event handlers. Embedding JavaScript as strings inside HTML attributes breaks the separation between markup and behavior, defeats bundling and tree-shaking, and complicates Content-Security-Policy setups that disallow inline scripts.
 
 Attach behavior from a separate client-side module instead:
 
@@ -285,17 +380,19 @@ export const page = button({ id: "submit-btn" }, "Click");
 ```
 
 ```ts
-// client: page.js 
+// client: page.js
 document.getElementById("submit-btn")?.addEventListener("click", () => {
 	alert("Hello!");
 });
 ```
 
-If, however, there is a need for server-side JS injections, this can still be done using the `set` method, for example:
+If there is a need for server-side JS injections, this can still be done using the `set` method:
 
 ```ts
 button("Click").set({ onclick: "doSomething()" })
 ```
+
+The value is escaped like any other attribute value, and the browser decodes it again before running the code.
 
 
 ## 5. Expansion
@@ -312,7 +409,7 @@ div(p("Hello")).expand()
 Signature:
 
 ```ts
-expand(style?: number | null, offset?: number): string
+expand(style?: number | null, offset?: number, escaping?: boolean): string
 ```
 
 `style` controls indentation:
@@ -326,6 +423,8 @@ expand(style?: number | null, offset?: number): string
 
 `offset` sets the initial indentation depth (default `0`).
 
+`escaping` controls whether text content is HTML-escaped (default `true`), see [Escaping](#53-escaping).
+
 ```ts
 page.expand(-1)  // tab-indented
 page.expand(2)   // 2-space indented
@@ -336,13 +435,15 @@ Phrasing-content elements (`span`, `p`, `a`, `strong`, `em`, `td`, `th`, etc.) n
 
 `expand()` on the `html` element automatically prepends `<!DOCTYPE html>`.
 
+Call `expand()` only once, on the outermost element, right before the output is sent. Inner parts are nested as elements, not as expanded strings.
+
 ### 5.2 Sibling Elements
 
-To expand multiple sibling elements without a wrapping parent — for example when returning an HTML partial — use `HTMLElement.expandAll()`:
+To expand multiple sibling elements without a wrapping parent, for example when returning an HTML partial, use `Element.expandAll()`:
 
 ```ts
 return new Response(
-    HTMLElement.expandAll([nav(...), main(...)], -1),
+    Element.expandAll([nav(...), main(...)], -1),
     { headers: { "Content-Type": "text/html" } }
 )
 ```
@@ -350,19 +451,58 @@ return new Response(
 Signature:
 
 ```ts
-static expandAll(elements: HTMLElement[], style?: number | null, offset?: number): string
+static expandAll(elements: Element[], style?: number | null, offset?: number, escaping?: boolean): string
 ```
+
+### 5.3 Escaping
+
+Strings are text, not markup, so markup is only created by elements:
+
+| Context | Escaped characters | Can be disabled |
+|---|---|---|
+| Text content | `&`, `<`, `>`, `"` | yes, with `escaping = false` |
+| Attribute values | `&`, `<`, `>`, `"` | no |
+| Content of `script` and `style` | none (raw text) | not applicable |
+
+```ts
+p("a < b & c").expand()
+// → <p>a &lt; b &amp; c</p>
+```
+
+With `escaping = false`, text content is written unchanged for the whole tree, so the caller is responsible for every string in it. This allows embedding an already expanded fragment:
+
+```ts
+const inner = div(p(userInput)).expand();
+const page = body(inner).expand(null, 0, false);
+```
+
+Strings inside the inner tree are escaped by the first `expand()`. In the outer tree, user input must not appear as a direct child, since it would not be escaped there.
+
+`escape(value)` applies the same escaping to a single string:
+
+```ts
+escape('"a" & <b>')
+// → &quot;a&quot; &amp; &lt;b&gt;
+```
+
+URL attributes are not validated: a `javascript:` URL in `href` is written as given. The content of a `style` element is raw text, so user data containing `</style>` must not be placed there.
 
 
 ## 6. Content Manipulation
 
-Methods for modifying an element's content after construction. All return `this` for chaining unless noted.
+Methods for modifying an element's children after construction. All return `this` for chaining.
 
 | Method | Description |
 |---|---|
-| `append(...parts)` | Appends one or more children |
-| `insertAt(index, part)` | Inserts a child at the given index |
-| `modifyContent(fn)` | Replaces the content array via a mapping function |
+| `append(...parts)` | Appends one or more children; nested arrays and iterables are flattened |
+| `insertAt(index, part)` | Inserts a child at the given index; an array or iterable is flattened |
+| `modifyChildren(fn)` | Replaces the children array via a mapping function |
+
+Read access:
+
+| Member | Description |
+|---|---|
+| `children` | The array of children, or `null` for void elements |
 | `at(index)` | Returns the child at `index`; negative values count from the end |
 | `firstChild` | The first child (property) |
 | `lastChild` | The last child (property) |
@@ -371,11 +511,14 @@ Methods for modifying an element's content after construction. All return `this`
 ```ts
 const list = ul(li("A"), li("B"))
 list.append(li("C"))
+list.append(extraItems.map(x => li(x)))
 list.insertAt(0, li("First"))
-list.modifyContent(parts => parts.filter(p => p !== null))
+list.modifyChildren(parts => parts.filter(p => p !== null))
 ```
 
-Children can also be thunks — zero-argument functions returning an `HTMLElement` — which are called lazily during expansion:
+Arrays and iterables that are passed directly are flattened, so `at`, `firstChild`, `lastChild` and `find()` see every one of those children. `modifyChildren` must return a flat array.
+
+Children can also be functions. They are called during expansion, and their results are expanded completely, with content and closing tag. Arrays and iterables returned by a function are resolved at that time and do not appear in `children`:
 
 ```ts
 div(() => expensiveElement())
@@ -395,13 +538,13 @@ For collections, use standard array methods:
 ```ts
 const elements: HTMLElement[] = [...]
 elements.find(el => el.symbol === HTMLElement.Symbol.td)
-elements.filter(el => "data-id" in el.attributes)
+elements.filter(el => el.hasAttribute("data-id"))
 ```
 
 
 ## 8. Script Element
 
-`script()` returns an `HTMLScriptElement` with additional methods for generating inline JavaScript. All methods return `this`.
+`script()` returns an `HTMLScriptElement` with additional methods for generating inline JavaScript. All methods return `this`. The content of a `script` element is raw text and is never HTML-escaped.
 
 ```ts
 script()
@@ -411,7 +554,7 @@ script()
 
 #### `.call(fn, ...args)`
 
-Appends a function call. Arguments are serialized as JavaScript literals:
+Appends a function call. Arguments are serialized as JavaScript literals. Strings and object keys are written as valid JSON string literals, and `<` is written as `\u003c`, so quotes, backslashes, line breaks and `</script>` in values cannot break the script:
 
 ```ts
 script().call("init", "en", 42, true, null, ["a", "b"])
@@ -422,7 +565,7 @@ Supported argument types: `string`, `number`, `boolean`, `null`, `undefined`, ar
 
 #### `.import(path, ...names)`
 
-Appends an ES module import statement. With no names, imports for side effects only:
+Appends an ES module import statement. With no names, imports for side effects only. The path is written as a safe string literal, and `null` or `undefined` names are ignored:
 
 ```ts
 script().import("/app.js")                     // → import "/app.js";
@@ -445,6 +588,10 @@ Returns a `<script type="module">` element:
 ```ts
 script.module().importOnly("/app.js", "main")
 ```
+
+#### `script.importmap(map)`
+
+Returns a `<script type="importmap">` element. In the JSON, `<`, `>` and `&` are written as `\u003c`, `\u003e` and `\u0026`.
 
 
 ## 9. Meta Helpers
@@ -492,11 +639,30 @@ myWidget({ name: "og:title", "content-type": "text" }, "Hello")
 // → <my-widget name="og:title" content-type="text">Hello</my-widget>
 ```
 
-`HTMLAttributes.define()` registers a custom attribute name, useful for marking it as a boolean attribute or for having it recognized by `hasAttr()` when it is passed as the sole argument to an element factory:
+`define` is idempotent: calling it again with an already-registered name returns the existing symbol.
+
+Custom attributes need no registration. Any key of an attributes object is written, converted to kebab-case:
 
 ```ts
-HTMLAttributes.define("my-flag");
-// HTMLAttributes.Boolean now includes "my-flag"
+div({ dataTheme: "dark" })   // → <div data-theme="dark">
 ```
 
-`define` is idempotent: calling it again with an already-registered name simply returns the existing symbol instead of throwing or overwriting it.
+`HTMLAttributes.define(key, options)` is only needed to keep an exact spelling or to mark a boolean attribute. `options.name` sets the written name (default: the key in kebab-case), `options.boolean` writes it as a bare name:
+
+```ts
+HTMLAttributes.define("myFlag", { boolean: true });          // my-flag
+HTMLAttributes.define("viewBoxLike", { name: "viewBoxLike" }); // keeps its spelling
+```
+
+To get types for custom attributes, augment the interface of the attributes class:
+
+```ts
+declare module "@ts-series/factories" {
+	interface HTMLAttributes {
+		dataTheme?: "light" | "dark";
+		myFlag?: boolean | null;
+	}
+}
+```
+
+Types and output are independent: augmentation only informs the type checker, `define` only affects the written output.

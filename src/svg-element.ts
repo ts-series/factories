@@ -1,5 +1,84 @@
-import { SVGAttributes } from './svg-attributes.js';
-import { Element } from './element.js';
+
+import { SVGAttributes } from './svg-attributes.ts';
+import { Element, type Part } from './element.ts';
+
+
+// SVG ELEMENT SYMBOLS
+
+const SVGSymbols = {
+	circle: Symbol("circle"),
+	ellipse: Symbol("ellipse"),
+	line: Symbol("line"),
+	path: Symbol("path"),
+	polygon: Symbol("polygon"),
+	polyline: Symbol("polyline"),
+	rect: Symbol("rect"),
+
+	text: Symbol("text"),
+	textPath: Symbol("textPath"),
+	tspan: Symbol("tspan"),
+
+	a: Symbol("a"),
+	defs: Symbol("defs"),
+	foreignObject: Symbol("foreignObject"),
+	g: Symbol("g"),
+	marker: Symbol("marker"),
+	svg: Symbol("svg"),
+	switch: Symbol("switch"),
+	symbol: Symbol("symbol"),
+	use: Symbol("use"),
+	view: Symbol("view"),
+
+	image: Symbol("image"),
+
+	linearGradient: Symbol("linearGradient"),
+	pattern: Symbol("pattern"),
+	radialGradient: Symbol("radialGradient"),
+	stop: Symbol("stop"),
+
+	clipPath: Symbol("clipPath"),
+	filter: Symbol("filter"),
+	mask: Symbol("mask"),
+
+	// Common filter primitives
+	feBlend: Symbol("feBlend"),
+	feColorMatrix: Symbol("feColorMatrix"),
+	feComponentTransfer: Symbol("feComponentTransfer"),
+	feComposite: Symbol("feComposite"),
+	feConvolveMatrix: Symbol("feConvolveMatrix"),
+	feDiffuseLighting: Symbol("feDiffuseLighting"),
+	feDisplacementMap: Symbol("feDisplacementMap"),
+	feDistantLight: Symbol("feDistantLight"),
+	feDropShadow: Symbol("feDropShadow"),
+	feFlood: Symbol("feFlood"),
+	feFuncA: Symbol("feFuncA"),
+	feFuncB: Symbol("feFuncB"),
+	feFuncG: Symbol("feFuncG"),
+	feFuncR: Symbol("feFuncR"),
+	feGaussianBlur: Symbol("feGaussianBlur"),
+	feImage: Symbol("feImage"),
+	feMerge: Symbol("feMerge"),
+	feMergeNode: Symbol("feMergeNode"),
+	feMorphology: Symbol("feMorphology"),
+	feOffset: Symbol("feOffset"),
+	fePointLight: Symbol("fePointLight"),
+	feSpecularLighting: Symbol("feSpecularLighting"),
+	feSpotLight: Symbol("feSpotLight"),
+	feTile: Symbol("feTile"),
+	feTurbulence: Symbol("feTurbulence"),
+
+	animate: Symbol("animate"),
+	animateMotion: Symbol("animateMotion"),
+	animateTransform: Symbol("animateTransform"),
+	mpath: Symbol("mpath"),
+	set: Symbol("set"),
+
+	desc: Symbol("desc"),
+	metadata: Symbol("metadata"),
+	script: Symbol("script"),
+	style: Symbol("style"),
+	title: Symbol("title")
+} as const;
 
 
 //
@@ -9,98 +88,25 @@ export type SVGElementFactory = (...content: unknown[]) => SVGElement;
 
 export class SVGElement extends Element<SVGAttributes> {
 
-	static override readonly Symbol: Record<string, symbol> = Object.freeze({
-		rect: Symbol("rect"),
-		line: Symbol("line"),
-		ellipse: Symbol("ellipse"),
-		polyline: Symbol("polyline"),
-		polygon: Symbol("polygon"),
-		path: Symbol("path"),
-
-		text: Symbol("text"),
-		tspan: Symbol("tspan"),
-		textPath: Symbol("textPath"),
-
-		svg: Symbol("svg"),
-		g: Symbol("g"),
-		defs: Symbol("defs"),
-		symbol: Symbol("symbol"),
-		use: Symbol("use"),
-		marker: Symbol("marker"),
-
-		image: Symbol("image"),
-		a: Symbol("a"),
-
-		linearGradient: Symbol("linearGradient"),
-		radialGradient: Symbol("radialGradient"),
-		pattern: Symbol("pattern"),
-		stop: Symbol("stop"),
-
-		clipPath: Symbol("clipPath"),
-		mask: Symbol("mask"),
-		filter: Symbol("filter"),
-
-		// Common filter primitives
-		feBlend: Symbol("feBlend"),
-		feColorMatrix: Symbol("feColorMatrix"),
-		feComponentTransfer: Symbol("feComponentTransfer"),
-		feComposite: Symbol("feComposite"),
-		feConvolveMatrix: Symbol("feConvolveMatrix"),
-		feDiffuseLighting: Symbol("feDiffuseLighting"),
-		feDisplacementMap: Symbol("feDisplacementMap"),
-		feDropShadow: Symbol("feDropShadow"),
-		feFlood: Symbol("feFlood"),
-		feGaussianBlur: Symbol("feGaussianBlur"),
-		feImage: Symbol("feImage"),
-		feMerge: Symbol("feMerge"),
-		feMergeNode: Symbol("feMergeNode"),
-		feMorphology: Symbol("feMorphology"),
-		feOffset: Symbol("feOffset"),
-		feSpecularLighting: Symbol("feSpecularLighting"),
-		feTile: Symbol("feTile"),
-		feTurbulence: Symbol("feTurbulence"),
-
-		animate: Symbol("animate"),
-		animateTransform: Symbol("animateTransform"),
-		animateMotion: Symbol("animateMotion"),
-		set: Symbol("set"),
-
-		title: Symbol("title"),
-		desc: Symbol("desc"),
-		style: Symbol("style"),
-		script: Symbol("script"),
-		circle: Symbol("circle")
-	});
+	static override readonly Symbol = SVGSymbols;
 
 
 	static override RawText: Set<symbol> = new Set<symbol>([
-		SVGElement.Symbol.script,
-		SVGElement.Symbol.style
+		SVGSymbols.script,
+		SVGSymbols.style
 	]);
-
-
-	/** Returns true if obj represents an SVG attributes object (not an Element or string). */
-	static override hasAttr(obj: object | null | undefined): boolean {
-		return !(obj instanceof Element) && typeof obj !== "string" && SVGAttributes.some(obj);
-	}
 
 
 	/** Returns a constructor for a non-empty SVG element whose first argument can be an object representing attributes. */
 	static override NonVoid(symbol: symbol): SVGElementFactory {
 		return (...content: unknown[]) => new SVGElement(
 			symbol,
-			new SVGAttributes(SVGElement.hasAttr(content[0] as object | null | undefined)
+			new SVGAttributes(SVGElement.hasAttr(content[0])
 				? content.shift() as object
 				: {}
 			),
-			content as Array<string | Element | (() => Element) | null | undefined>
+			content
 		);
-	}
-
-
-	/** Creates a new SVGAttributes instance from a plain object. */
-	protected override newAttributes(obj: object): SVGAttributes {
-		return new SVGAttributes(obj);
 	}
 
 
@@ -122,35 +128,35 @@ export class SVGElement extends Element<SVGAttributes> {
 
 	/** Sets the stroke-width attribute. */
 	strokeWidth(value: number | string): this {
-		this.attributes["stroke-width"] = value;
+		this.attributes.strokeWidth = value;
 		return this;
 	}
 
 
 	/** Sets the stroke-dasharray attribute. */
 	strokeDasharray(value: string): this {
-		this.attributes["stroke-dasharray"] = value;
+		this.attributes.strokeDasharray = value;
 		return this;
 	}
 
 
 	/** Sets the stroke-dashoffset attribute. */
 	strokeDashoffset(value: number | string): this {
-		this.attributes["stroke-dashoffset"] = value;
+		this.attributes.strokeDashoffset = value;
 		return this;
 	}
 
 
 	/** Sets the stroke-linecap attribute. */
 	strokeLinecap(value: 'butt' | 'round' | 'square'): this {
-		this.attributes["stroke-linecap"] = value;
+		this.attributes.strokeLinecap = value;
 		return this;
 	}
 
 
 	/** Sets the stroke-linejoin attribute. */
 	strokeLinejoin(value: 'arcs' | 'bevel' | 'miter' | 'miter-clip' | 'round'): this {
-		this.attributes["stroke-linejoin"] = value;
+		this.attributes.strokeLinejoin = value;
 		return this;
 	}
 
@@ -164,14 +170,14 @@ export class SVGElement extends Element<SVGAttributes> {
 
 	/** Sets the fill-opacity attribute. */
 	fillOpacity(value: number | string): this {
-		this.attributes["fill-opacity"] = value;
+		this.attributes.fillOpacity = value;
 		return this;
 	}
 
 
 	/** Sets the stroke-opacity attribute. */
 	strokeOpacity(value: number | string): this {
-		this.attributes["stroke-opacity"] = value;
+		this.attributes.strokeOpacity = value;
 		return this;
 	}
 
@@ -298,13 +304,6 @@ export class SVGElement extends Element<SVGAttributes> {
 	/** Sets the href attribute. */
 	href(value: string): this {
 		this.attributes.href = value;
-		return this;
-	}
-
-
-	/** Sets the tabindex attribute. */
-	tabindex(value: bigint): this {
-		this.attributes.tabindex = value;
 		return this;
 	}
 

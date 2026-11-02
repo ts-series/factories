@@ -1,7 +1,9 @@
 {
 	"compilerOptions": {
 		"declaration": true,
+		"erasableSyntaxOnly": true,
 		"esModuleInterop": true,
+		"lib": ["ES2025"],
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
 		"outDir": "./dist",
@@ -9,7 +11,10 @@
 		"rootDir": "./src",
 		"skipLibCheck": true,
 		"strict": true,
-		"target": "ES2025"
+		"target": "ES2025",
+		"types": [],
+		"verbatimModuleSyntax": true
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["src/**/*.test.ts"]
 }

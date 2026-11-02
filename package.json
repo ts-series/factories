@@ -1,6 +1,6 @@
 {
 	"name": "@ts-series/factories",
-	"version": "1.2.0",
+	"version": "1.3.0",
 	"license": "(0BSD OR Apache-2.0)",
 	"description": "A lightweight TypeScript DSL for generating HTML, SVG and MathML server-side without a template engine.",
 	"keywords": [
@@ -26,11 +26,20 @@
 		}
 	},
 	"devDependencies": {
+		"@types/node": "^26.6.6",
 		"typescript": "^7.0.2"
 	},
 	"scripts": {
 		"build": "rm -rf dist && tsc",
-		"prepublishOnly": "pnpm run build"
+		"prepublishOnly": "pnpm run build",
+		"test": "node --test test/",
+		"test:dist": "pnpm run build && node --test test/",
+		"typecheck:test": "tsc -p test/tsconfig.json"
+	},
+	"imports": {
+		"#factories": "./src/index.ts",
+		"#factories/svg": "./src/svg.ts",
+		"#factories/mathml": "./src/mathml.ts"
 	},
 	"exports": {
 		".": {

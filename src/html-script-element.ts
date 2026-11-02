@@ -1,6 +1,6 @@
 
-import { HTMLAttributes } from './html-attributes.js';
-import { HTMLElement } from './html-element.js';
+import { HTMLAttributes } from './html-attributes.ts';
+import { HTMLElement } from './html-element.ts';
 
 
 //
@@ -54,31 +54,37 @@ function transferValue(value: TransferableValue): string {
 
 export class HTMLScriptElement extends HTMLElement {
 
-	constructor(attributes: Object = {}, content: Array<string | null | undefined> = []) {
-		super(HTMLElement.Symbol.script, new HTMLAttributes(attributes), content);
+	constructor(attributes: object = {}, content: Array<string | null | undefined> = []) {
+		super(HTMLElement.Symbol.script, new HTMLAttributes(attributes), [...content]);
+			// Copy so that the caller's array is not shared with, and later mutated by, this element.
 	}
 
-	/** Calls a function on the client side to which values ​​are passed literally from the server. */
+
+	/** Calls a function on the client side to which values are passed literally from the server. */
 	call(fn: string, ...args: TransferableValue[]): HTMLScriptElement {
-		this.append(`${fn}(${args.map(x => transferValue(x)).join(", ")}); `)
+		this.append(`${fn}(${args.map(x => transferValue(x)).join(", ")}); `);
 		return this;
 	}
+
 
 	/** Imports a module with any number of functions. */
 	import(path: string, ...names: (string | null | undefined)[]): HTMLScriptElement {
-		this.append(names.length === 0
-			? `import "${path}"; `
-			: `import { ${names.join(", ")} } from "${path}"; `
-		)
+		const list = names.filter((n): n is string => n != null);
+	
+		this.append(list.length === 0
+			? `import ${transferString(path)}; `
+			: `import { ${list.join(", ")} } from ${transferString(path)}; `
+		);
 		return this;
 	}
+
 
 	/** Combines the methods `import` and `call`, which is suitable when only a single function is imported. */
 	importOnly(path: string, name: string, ...args: TransferableValue[]): HTMLScriptElement {
 		this.append(
-			`import { ${name} } from "${path}"; `,
+			`import { ${name} } from ${transferString(path)}; `,
 			`${name}(${args.map(x => transferValue(x)).join(", ")}); `
-		)
+		);
 		return this;
 	}
 }

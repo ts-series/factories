@@ -1,9 +1,9 @@
 
-import * as HTML from '../modules/html.ts'
+import * as HTML from '../src/html.ts'
 
 import {
 	a, article, aside, body, br, div, head, header, html, input, link, main, meta, nav, p, section, title
-} from '../modules/html.ts'
+} from '../src/html.ts'
 
 
 //

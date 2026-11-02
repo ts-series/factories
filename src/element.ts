@@ -1,10 +1,9 @@
-
-import { Attributes, escape } from './attributes.js';
+import { Attributes, escape, toCSS } from './attributes.ts';
 
 
 //
 
-type Part = string | Element | (() => Element) | null | undefined;
+export type Part = unknown;
 
 
 export class Element<Attr extends Attributes = Attributes> {
@@ -13,31 +12,61 @@ export class Element<Attr extends Attributes = Attributes> {
 
 	static RawText: Set<symbol> = new Set();
 
-	content: Array<Part> | null;
-
+	symbol: symbol;
 	#attributes: Attr;
+	children: Array<Part> | null;
 
 
-	/** Creates an element and flattens any nested arrays in its content. */
+	/** Creates an element and flattens any nested arrays and iterables in its content. */
 	constructor(
-		public symbol: symbol,
+		symbol: symbol,
 		attributes: Attr,
-		content: Array<Part | Array<unknown>> | null = null
+		content: Array<unknown> | null = null
 	) {
+		this.symbol = symbol;
 		this.#attributes = attributes;
-		this.content = content === null ? null : Element.#flatten(content);
+		this.children = content === null ? null : Element.#flatten(content);
 	}
 
 
-	/** Flattens nested arrays of parts into one array and returns the input unchanged if it contains no arrays. */
-	static #flatten(parts: Array<Part | Array<unknown>>): Array<Part> {
-		return parts.some(Array.isArray) ? parts.flat(Infinity) as Array<Part> : parts as Array<Part>;
+	/** Returns true if the part is an array or another iterable object that is expanded into several parts; strings and elements are not. */
+	static #isNested(part: unknown): part is Iterable<unknown> {
+		return part !== null
+			&& typeof part === "object"
+			&& !(part instanceof Element)
+			&& typeof (part as Iterable<unknown>)[Symbol.iterator] === "function";
+	}
+	
+	
+	/** Flattens nested arrays and iterables of parts into one array; returns the input unchanged if it contains none. */
+	static #flatten(parts: Array<unknown>): Array<Part> {
+		if (!parts.some(Element.#isNested)) {
+			return parts as Array<Part>;
+		}
+		else {
+			const result: Array<Part> = [];
+	
+			for (const part of parts) {
+				if (Element.#isNested(part)) {
+					for (const item of Element.#flatten([...part])) {
+						result.push(item);
+					}
+				}
+				else {
+					result.push(part);
+				}
+			}
+	
+			return result;
+		}
 	}
 
 
-	/** Returns true if obj represents an attributes object (not an Element or string). */
-	static hasAttr(obj: object | null | undefined): boolean {
-		return !(obj instanceof Element) && typeof obj !== "string" && Attributes.some(obj);
+	/** Returns true if obj is a plain object literal, which is treated as an attributes object. */
+	static hasAttr(obj: unknown): boolean {
+		return obj !== null
+			&& typeof obj === "object"
+			&& Object.getPrototypeOf(obj) === Object.prototype;
 	}
 
 
@@ -48,11 +77,11 @@ export class Element<Attr extends Attributes = Attributes> {
 	): (...content: unknown[]) => Element {
 		return (...content: unknown[]) => new this(
 			symbol,
-			new AttributesCtor(this.hasAttr(content[0] as object | null | undefined)
+			new AttributesCtor(this.hasAttr(content[0])
 				? content.shift() as object
 				: {}
 			),
-			content as Array<Part>
+			content
 		);
 	}
 
@@ -68,26 +97,26 @@ export class Element<Attr extends Attributes = Attributes> {
 
 	// ELEMENT ATTRIBUTES
 
-	/** Creates a new Attr instance from a plain object; overridden by subclasses to use their own Attributes subclass. */
-	protected newAttributes(obj: object): Attr {
-		return new Attributes(obj) as Attr;
-	}
-
-
 	/** Returns the element's attributes. */
 	get attributes(): Attr {
 		return this.#attributes;
 	}
 
 
-	/** Sets the element's attributes from a plain object, converting it via newAttributes(). */
-	set attributes(obj: object) {
-		this.#attributes = obj instanceof Attributes ? obj as Attr : this.newAttributes(obj);
+	/** Returns true if the attribute is set on the element, like Element.hasAttribute of the DOM API. */
+	hasAttribute(name: string): boolean {
+		return Object.hasOwn(this.attributes, name) && this.attributes[name] !== undefined;
+	}
+	
+	
+	/** Returns the value of the attribute, or undefined if it is not set, like Element.getAttribute of the DOM API. */
+	getAttribute(name: string): unknown {
+		return this.attributes[name];
 	}
 
 
 	/** Adds additional attributes or overwrites existing ones. */
-	set(...values: (Record<string, unknown> | string | null | undefined)[]): Element {
+	set(...values: (Record<string, unknown> | string | null | undefined)[]): this {
 		for (const val of values) {
 			if (val == null) {
 				continue;
@@ -99,36 +128,45 @@ export class Element<Attr extends Attributes = Attributes> {
 				Object.assign(this.attributes, val);
 			}
 		}
-
+	
 		return this;
 	}
 
+
+	/** Removes the given attributes from the element. */
+	removeAttributes(...names: string[]): this {
+		for (const name of names) {
+			delete (this.attributes as Attributes)[name];
+		}
+		return this;
+	}
+	
 
 	// SELECTING AND INSERTING INNER ELEMENTS
 
 	/** Returns the part at the given index, or undefined if the element is void. */
 	getElementByIndex(index: number): Part {
-		return this.content?.[index];
+		return this.children?.[index];
 	}
 
 
 	/** Returns the first child part, or undefined if the element is void. */
 	get firstChild(): Part {
-		return this.content?.[0];
+		return this.children?.[0];
 	}
 
 
 	/** Returns the last child part, or undefined if the element is void. */
 	get lastChild(): Part {
-		return this.content?.[this.content.length - 1];
+		return this.children?.[this.children.length - 1];
 	}
 
 
 	/** Returns the child part at the given index, allowing negative integers for counting backwards. */
 	at(index: number): Part {
 		return index < 0
-			? this.content?.[this.content.length + index]
-			: this.content?.[index];
+			? this.children?.[this.children.length + index]
+			: this.children?.[index];
 	}
 
 
@@ -137,11 +175,11 @@ export class Element<Attr extends Attributes = Attributes> {
 		if (predicate(this)) {
 			return this;
 		}
-		else if (!Array.isArray(this.content)) {
+		else if (!Array.isArray(this.children)) {
 			return null;
 		}
 		else {
-			for (const part of this.content) {
+			for (const part of this.children) {
 				if (part instanceof Element) {
 					const result = part.find(predicate);
 					if (result) return result;
@@ -152,25 +190,47 @@ export class Element<Attr extends Attributes = Attributes> {
 	}
 
 
-	/** Appends one or more parts to the element's content, flattening nested arrays, or does nothing if the element is void. */
-	append(...elements: Array<Part | Array<unknown>>): Element {
-		if (Array.isArray(this.content)) {
-			this.content.push(...Element.#flatten(elements));
+	/** Appends one or more parts to the element's children, flattening nested arrays and iterables, or does nothing if the element is void. */
+	append(...elements: Array<unknown>): this {
+		if (Array.isArray(this.children)) {
+			for (const part of Element.#flatten(elements)) {
+				this.children.push(part);
+			}
 		}
 		return this;
 	}
 
 
-	/** Inserts a part or the flattened parts of an array at the given index, or does nothing if the element is void. */
-	insertAt(index: number, element: Part | Array<unknown>): Element {
-		this.content?.splice(index, 0, ...Element.#flatten([element]));
+	/** Inserts a part or the flattened parts of an array or iterable at the given index, or does nothing if the element is void. */
+	insertAt(index: number, element: unknown): this {
+		if (this.children) {
+			const tail = this.children.splice(index);
+	
+			for (const part of Element.#flatten([element])) {
+				this.children.push(part);
+			}
+	
+			for (const part of tail) {
+				this.children.push(part);
+			}
+		}
 		return this;
 	}
 
 
-	/** Replaces the content array using the given function, or does nothing if the element is void. */
-	modifyContent(fn: (parts: Array<Part>) => Array<Part>): Element {
-		if (this.content) this.content = fn(this.content);
+	/** Replaces the contents of the children array with the result of the given function, keeping the array itself, or does nothing if the element is void. */
+	modifyChildren(fn: (parts: Array<Part>) => Array<Part>): this {
+		if (this.children) {
+			const result = fn(this.children);
+	
+			if (result !== this.children) {
+				this.children.length = 0;
+	
+				for (const part of result) {
+					this.children.push(part);
+				}
+			}
+		}
 		return this;
 	}
 
@@ -179,41 +239,55 @@ export class Element<Attr extends Attributes = Attributes> {
 
 	/** Sets the class attribute to one or more class names, ignoring false, null and undefined values. */
 	class(...values: (string | false | null | undefined)[]): this {
-		(this.attributes as Attributes).class = values.filter((v): v is string => typeof v === "string");
+		this.attributes.class = Attributes.omitBlanks(values);
 		return this;
 	}
 
 
 	/** Sets the id attribute. */
 	id(value: string | null | undefined): this {
-		(this.attributes as Attributes).id = value;
+		this.attributes.id = value;
 		return this;
 	}
 
 
 	/** Sets the itemprop attribute. */
 	itemprop(value: string | null | undefined): this {
-		(this.attributes as Attributes).itemprop = value;
+		this.attributes.itemprop = value;
 		return this;
 	}
 
 
 	/** Sets the itemscope attribute, optionally with an itemtype URL. */
 	itemscope(itemtype?: string): this {
-		(this.attributes as Attributes).itemscope = null;
-		if (itemtype) (this.attributes as Attributes).itemtype = itemtype;
+		this.attributes.itemscope = null;
+		if (itemtype) this.attributes.itemtype = itemtype;
+		return this;
+	}
+
+
+	/** Sets the role attribute to one or more roles, ignoring false, null and undefined values. */
+	role(...values: (string | false | null | undefined)[]): this {
+		this.attributes.role = Attributes.omitBlanks(values);
 		return this;
 	}
 
 
 	/** Sets the style attribute from a string or an object of camelCase CSS properties. */
-	style(value: string | Record<string, string | number> | null | undefined): this {
+	style(value: string | Record<string, string | number | boolean | null | undefined> | null | undefined): this {
 		if (value == null) {
-			(this.attributes as Attributes).style = value;
+			this.attributes.style = value;
 		}
 		else {
-			(this.attributes as Attributes).style = typeof value === "string" ? value : Attributes.toCSS(value);
+			this.attributes.style = typeof value === "string" ? value : toCSS(value);
 		}
+		return this;
+	}
+
+
+	/** Sets the tabindex attribute, or removes it when value is undefined. */
+	tabindex(value: number | null | undefined): this {
+		this.attributes.tabindex = value;
 		return this;
 	}
 
@@ -248,26 +322,36 @@ export class Element<Attr extends Attributes = Attributes> {
 	
 			stack.push(indent, element.toTag());
 	
-			if (Array.isArray(element.content)) {
+			if (Array.isArray(element.children)) {
 				depth += 1;
 				const childStyle = element.suppressChildStyle(currentStyle);
 				const escapeText = escaping && !(element.constructor as typeof Element).RawText.has(element.symbol);
 	
-				for (const part of element.content) {
-					if (part == null) {
-						continue;
+				const expandPart = (part: unknown): void => {
+					while (typeof part === "function") {
+						part = part();
 					}
-					else if (typeof part === "function") {
-						stack.push(part().toTag());
-						endIndent = indent;
+	
+					if (part == null || typeof part === "boolean") {
+						return;
 					}
 					else if (part instanceof Element) {
 						expand(part, childStyle);
 						endIndent = childStyle == null ? "" : indent;
 					}
-					else {
-						stack.push(escapeText ? escape(part) : part);
+					else if (Element.#isNested(part)) {
+						for (const item of part) {
+							expandPart(item);
+						}
 					}
+					else {
+						const text = String(part);
+						stack.push(escapeText ? escape(text) : text);
+					}
+				};
+	
+				for (const part of element.children) {
+					expandPart(part);
 				}
 	
 				stack.push(endIndent, element.toEndTag());

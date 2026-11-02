@@ -50,15 +50,26 @@ Another intention behind **Factories.ts** is to provide a DSL with as little syn
 let hello = p("Hallo,", br, "kaputte Welt!");
 ```
 
-In fact, all non-void elements have a rest parameter, so they can contain any number of other elements or JavaScript values, including nested arrays, which are flattened automatically. Arguments that do not represent HTML elements and are not already strings get automatically converted. Therefore, by overriding the corresponding `toString` method, the output in HTML can be precisely defined. This is particularly useful for outputting specific data, without any additional abstraction layers needed. The result is HTML-escaped like any other string.
+In fact, all non-void elements have a rest parameter, so they can contain any number of other elements or JavaScript values. Arrays and other iterables (generators, `Set`, iterator helpers) are flattened automatically, functions are called, and `null`, `undefined` and booleans are skipped, so conditions can be written inline:
+
+```javascript
+ul(items.values().map(item => li(item.name)), isAdmin && li("Admin"))
+```
+
+Other values are converted with `String()` and written as escaped text. By overriding `toString`, the output of your own classes can be defined precisely, without any additional abstraction layers. The complete rules are listed in the [Reference](https://github.com/ts-series/factories/blob/main/REFERENCE.md).
 
 ### Attributes
 
-Any attribute can be specified using an object whose keys are interpreted as such, and gets passed as the first argument; or specified subsequently using the `set` method. In addition, there are same-named methods for all global and element-specific HTML attributes, for example `x.id("about")`.
+If the first argument is a plain object, its keys are written as attributes, regardless of their names; attributes can also be specified subsequently using the `set` method. In addition, there are same-named methods for nearly all HTML attributes, for example `x.id("about")`. Keys in camelCase or snake_case are written in kebab-case (`ariaLabel` becomes `aria-label`).
+
+```javascript
+div({ id: "app", dataTheme: "dark" }, "Hello").class("box", isActive && "active")
+// → <div id="app" data-theme="dark" class="box active">Hello</div>
+```
 
 ### Escaping
 
-The special characters `&`, `<` and `>` in text content and `&` and `"` in attribute values get escaped automatically. The content of `script` and `style` elements is never escaped, and `HTMLScriptElement.call` serializes its values as safe JavaScript literals.
+The special characters `&`, `<`, `>` and `"` in text content and in attribute values get escaped automatically. The content of `script` and `style` elements is never escaped, and `HTMLScriptElement.call` serializes its values as safe JavaScript literals.
 
 Text escaping can be disabled with the `escaping` parameter of `expand` and `expandAll`, for example to embed an already expanded fragment. From then on, the caller is responsible for all strings in that tree. Attribute values are nonetheless always escaped.
 
@@ -66,6 +77,8 @@ Text escaping can be disabled with the `escaping` parameter of `expand` and `exp
 const inner = div(p(userInput)).expand();
 const page = body(inner).expand(null, 0, false);
 ```
+
+URLs in attributes such as `href` are not validated.
 
 ### Client-Side JavaScript
 
@@ -80,7 +93,9 @@ script.module().importOnly("/chart.js", "render", { labels: ["A", "B"], values: 
 
 ### Custom Elements and Attributes
 
-Elements and attributes outside the built-in HTML/SVG/MathML sets can be registered at runtime using `define`, for example `HTMLElement.define("my-widget")` or `HTMLAttributes.define("my-attr")`. This is useful for Web Components and other custom markup.
+Elements outside the built-in sets can be registered at runtime using `HTMLElement.define("my-widget")`, which is useful for Web Components and other custom markup.
+
+Custom attributes need no registration, any key of the attributes object is written. `HTMLAttributes.define` is only needed to keep an exact spelling or to mark a boolean attribute. To get types for custom attributes, augment the `HTMLAttributes` interface with TypeScript module augmentation, see the [Reference](https://github.com/ts-series/factories/blob/main/REFERENCE.md).
 
 ### String Expansion
 
@@ -114,7 +129,7 @@ page.append(p("World"));
 page.insertAt(0, p("First"));
 ```
 
-`append` and `insertAt` also flatten nested arrays. However, such post-construction manipulation is not actually required, since markup can be assembled programmatically in advance through conditionals. Nonetheless, this capability is offered for edge cases.
+`append` and `insertAt` also flatten nested arrays and iterables. However, such post-construction manipulation is not actually required, since markup can be assembled programmatically in advance through conditionals. Nonetheless, this capability is offered for edge cases.
 
 
 ## API Reference
@@ -134,7 +149,7 @@ Exceptions are not thrown. Instead, necessary type conversions get performed to 
 
 ## Development Status
 
-**Factories.ts** contains fewer than 2,000 lines of code with no dependencies. The principle of how HTML is described in JavaScript is quite logical and so are the interfaces. Consequently, no breaks are to be expected in future versions.
+**Factories.ts** contains no dependencies. The principle of how HTML is described in JavaScript is quite logical and so are the interfaces; changes that break existing code are documented in the changelog.
 
 Future versions are only intended to offer more methods, provided this seems sensible. The question that still needs to be clarified here is whether more type safety should be built in, which ensures that, for example, the `href` can only be called on those elements that are allowed to contain it according to the current HTML5 specification. Currently, no distinction is made here for the sake of simplicity, as well as to accommodate custom elements.
 

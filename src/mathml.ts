@@ -1,9 +1,10 @@
 
-import { MathMLElement, type MathMLElementFactory, type VoidMathMLElementFactory } from './mathml-element.js';
+import { MathMLElement, type MathMLElementFactory, type VoidMathMLElementFactory } from './mathml-element.ts';
 
 
 //
 
+export const mglyph: VoidMathMLElementFactory = MathMLElement.Void(MathMLElement.Symbol.mglyph);
 export const mi: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.mi);
 export const mn: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.mn);
 export const mo: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.mo);
@@ -30,9 +31,11 @@ export const msubsup: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement
 export const msup: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.msup);
 export const munder: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.munder);
 export const munderover: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.munderover);
+export const none: VoidMathMLElementFactory = MathMLElement.Void(MathMLElement.Symbol.none);
 
 export const maligngroup: VoidMathMLElementFactory = MathMLElement.Void(MathMLElement.Symbol.maligngroup);
 export const malignmark: VoidMathMLElementFactory = MathMLElement.Void(MathMLElement.Symbol.malignmark);
+export const mlabeledtr: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.mlabeledtr);
 export const mtable: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.mtable);
 export const mtd: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.mtd);
 export const mtr: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.mtr);
@@ -46,24 +49,25 @@ export const msrow: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.S
 export const mstack: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.mstack);
 
 export const annotation: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.annotation);
-export const semantics: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.semantics);
+export const annotationXml: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.annotationXml);
 export const maction: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.maction);
+export const semantics: MathMLElementFactory = MathMLElement.NonVoid(MathMLElement.Symbol.semantics);
 
 export const math: MathMLElementFactory & {
-	mi: MathMLElementFactory, mn: MathMLElementFactory, mo: MathMLElementFactory, ms: MathMLElementFactory, mspace: VoidMathMLElementFactory, mtext: MathMLElementFactory,
+	mi: MathMLElementFactory, mn: MathMLElementFactory, mo: MathMLElementFactory, ms: MathMLElementFactory, mspace: VoidMathMLElementFactory, mtext: MathMLElementFactory, mglyph: VoidMathMLElementFactory,
 	menclose: MathMLElementFactory, merror: MathMLElementFactory, mfenced: MathMLElementFactory, mfrac: MathMLElementFactory, mpadded: MathMLElementFactory, mphantom: MathMLElementFactory, mroot: MathMLElementFactory, mrow: MathMLElementFactory, msqrt: MathMLElementFactory, mstyle: MathMLElementFactory,
-	mmultiscripts: MathMLElementFactory, mover: MathMLElementFactory, mprescripts: VoidMathMLElementFactory, msub: MathMLElementFactory, msubsup: MathMLElementFactory, msup: MathMLElementFactory, munder: MathMLElementFactory, munderover: MathMLElementFactory,
-	maligngroup: VoidMathMLElementFactory, malignmark: VoidMathMLElementFactory, mtable: MathMLElementFactory, mtd: MathMLElementFactory, mtr: MathMLElementFactory,
+	mmultiscripts: MathMLElementFactory, mover: MathMLElementFactory, mprescripts: VoidMathMLElementFactory, none: VoidMathMLElementFactory, msub: MathMLElementFactory, msubsup: MathMLElementFactory, msup: MathMLElementFactory, munder: MathMLElementFactory, munderover: MathMLElementFactory,
+	maligngroup: VoidMathMLElementFactory, malignmark: VoidMathMLElementFactory, mlabeledtr: MathMLElementFactory, mtable: MathMLElementFactory, mtd: MathMLElementFactory, mtr: MathMLElementFactory,
 	mlongdiv: MathMLElementFactory, mscarries: MathMLElementFactory, mscarry: MathMLElementFactory, msgroup: MathMLElementFactory, msline: VoidMathMLElementFactory, msrow: MathMLElementFactory, mstack: MathMLElementFactory,
-	annotation: MathMLElementFactory, semantics: MathMLElementFactory, maction: MathMLElementFactory
+	annotation: MathMLElementFactory, annotationXml: MathMLElementFactory, semantics: MathMLElementFactory, maction: MathMLElementFactory
 } = Object.assign(
 	MathMLElement.NonVoid(MathMLElement.Symbol.math),
 	{
-		mi, mn, mo, ms, mspace, mtext,
+		mi, mn, mo, ms, mspace, mtext, mglyph,
 		menclose, merror, mfenced, mfrac, mpadded, mphantom, mroot, mrow, msqrt, mstyle,
-		mmultiscripts, mover, mprescripts, msub, msubsup, msup, munder, munderover,
-		maligngroup, malignmark, mtable, mtd, mtr,
+		mmultiscripts, mover, mprescripts, none, msub, msubsup, msup, munder, munderover,
+		maligngroup, malignmark, mlabeledtr, mtable, mtd, mtr,
 		mlongdiv, mscarries, mscarry, msgroup, msline, msrow, mstack,
-		annotation, semantics, maction
+		annotation, annotationXml, semantics, maction
 	}
 );

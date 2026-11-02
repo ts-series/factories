@@ -1,7 +1,8 @@
 
-import { HTMLAttributes } from './html-attributes.js';
-import { HTMLElement, type HTMLElementFactory, type VoidHTMLElementFactory } from './html-element.js';
-import { HTMLScriptElement } from './html-script-element.js'
+import { type Part } from './element.ts';
+import { HTMLAttributes } from './html-attributes.ts';
+import { HTMLElement, type HTMLElementFactory, type VoidHTMLElementFactory } from './html-element.ts';
+import { HTMLScriptElement } from './html-script-element.ts'
 
 
 //
@@ -12,11 +13,11 @@ function __a(attributes: object = {}): HTMLElementFactory {
 	return (...content: unknown[]) => {
 		const attr = typeof content[0] === "string" && typeof content[1] === "string"
 			? { href: content.shift(), ...attributes }
-			: HTMLElement.hasAttr(content[0] as object | null | undefined)
-				? { ...content.shift() as object, ...attributes}
-				: attributes;	
+			: HTMLElement.hasAttr(content[0])
+				? { ...content.shift() as object, ...attributes }
+				: attributes;
 
-		return new HTMLElement(HTMLElement.Symbol.a, new HTMLAttributes(attr), content as Array<string | HTMLElement | (() => HTMLElement) | null | undefined>);
+		return new HTMLElement(HTMLElement.Symbol.a, new HTMLAttributes(attr), content as Array<Part>);
 	}
 }
 
@@ -42,22 +43,26 @@ export const br: VoidHTMLElementFactory = HTMLElement.Void(HTMLElement.Symbol.br
 
 export type ButtonFactory = HTMLElementFactory & { submit: HTMLElementFactory; reset: HTMLElementFactory; };
 
-function __button(type: string): HTMLElementFactory {
+function __button(preset: object): HTMLElementFactory {
 	return (...content: unknown[]) => {
-		const attr: Record<string, unknown> = HTMLElement.hasAttr(content[0] as object | null | undefined)
-			? content.shift() as Record<string, unknown>
+		const attr = HTMLElement.hasAttr(content[0])
+			? content.shift() as object
 			: {};
 
-		attr.type = type;
-
-		return new HTMLElement(HTMLElement.Symbol.button, new HTMLAttributes(attr), content as Array<string | HTMLElement | (() => HTMLElement) | null | undefined>);
-	}
+		return new HTMLElement(HTMLElement.Symbol.button, new HTMLAttributes({ ...attr, ...preset }), content as Array<Part>);
+	};
 }
 
-export const button: ButtonFactory = __button("button") as ButtonFactory;
+export const button: ButtonFactory = ((...content: unknown[]) => {
+	const attr = HTMLElement.hasAttr(content[0])
+		? content.shift() as object
+		: {};
 
-button.submit = __button("submit");
-button.reset = __button("reset");
+	return new HTMLElement(HTMLElement.Symbol.button, new HTMLAttributes({ type: "button", ...attr }), content as Array<Part>);
+}) as ButtonFactory;
+
+button.submit = __button({ type: "submit" });
+button.reset = __button({ type: "reset" });
 
 
 export const canvas: HTMLElementFactory = HTMLElement.NonVoid(HTMLElement.Symbol.canvas);
@@ -106,11 +111,11 @@ export const hr: VoidHTMLElementFactory = HTMLElement.Void(HTMLElement.Symbol.hr
 export const html: HTMLElementFactory = (...content: unknown[]) => {
 	const attr = typeof content[0] === "string"
 		? { lang: content.shift() }
-		: HTMLElement.hasAttr(content[0] as object | null | undefined)
+		: HTMLElement.hasAttr(content[0])
 			? content.shift() as object
-			: {};	
+			: {};
 
-	return new HTMLElement(HTMLElement.Symbol.html, new HTMLAttributes(attr), content as Array<string | HTMLElement | (() => HTMLElement) | null | undefined>);
+	return new HTMLElement(HTMLElement.Symbol.html, new HTMLAttributes(attr), content as Array<Part>);
 }
 
 
@@ -119,7 +124,7 @@ export const iframe: HTMLElementFactory = HTMLElement.NonVoid(HTMLElement.Symbol
 export const img: VoidHTMLElementFactory = HTMLElement.Void(HTMLElement.Symbol.img);
 
 
-export type InputFactory = ((attributes: object, required?: boolean) => HTMLElement) & {
+export type InputFactory = ((attributes?: object, required?: boolean) => HTMLElement) & {
 	button: InputFactory;
 	checkbox: InputFactory;
 	color: InputFactory;
@@ -144,38 +149,42 @@ export type InputFactory = ((attributes: object, required?: boolean) => HTMLElem
 	week: InputFactory;
 };
 
-function __input(type: string): InputFactory {
-	return ((attributes: object, required: boolean = false) => {
+function __input(preset: object): InputFactory {
+	return ((attributes: object = {}, required: boolean = false) => {
 		return new HTMLElement(HTMLElement.Symbol.input, new HTMLAttributes({
-			type: type, ...attributes, ...(required ? { required: null } : {})
+			...attributes, ...preset, ...(required ? { required: null } : {})
 		}));
 	}) as InputFactory;
 }
 
-export const input: InputFactory = __input("text");
+export const input: InputFactory = ((attributes: object = {}, required: boolean = false) => {
+	return new HTMLElement(HTMLElement.Symbol.input, new HTMLAttributes({
+		type: "text", ...attributes, ...(required ? { required: null } : {})
+	}));
+}) as InputFactory;
 
-input.button = __input("button");
-input.checkbox = __input("checkbox");
-input.color = __input("color");
-input.date = __input("date");
-input.datetimeLocal = __input("datetime-local");
-input.email = __input("email");
-input.file = __input("file");
-input.hidden = __input("hidden");
-input.image = __input("image");
-input.month = __input("month");
-input.number = __input("number");
-input.password = __input("password");
-input.radio = __input("radio");
-input.range = __input("range");
-input.reset = __input("reset");
-input.search = __input("search");
-input.submit = __input("submit");
-input.tel = __input("tel");
-input.text = __input("text");
-input.time = __input("time");
-input.url = __input("url");
-input.week = __input("week");
+input.button = __input({ type: "button" });
+input.checkbox = __input({ type: "checkbox" });
+input.color = __input({ type: "color" });
+input.date = __input({ type: "date" });
+input.datetimeLocal = __input({ type: "datetime-local" });
+input.email = __input({ type: "email" });
+input.file = __input({ type: "file" });
+input.hidden = __input({ type: "hidden" });
+input.image = __input({ type: "image" });
+input.month = __input({ type: "month" });
+input.number = __input({ type: "number" });
+input.password = __input({ type: "password" });
+input.radio = __input({ type: "radio" });
+input.range = __input({ type: "range" });
+input.reset = __input({ type: "reset" });
+input.search = __input({ type: "search" });
+input.submit = __input({ type: "submit" });
+input.tel = __input({ type: "tel" });
+input.text = __input({ type: "text" });
+input.time = __input({ type: "time" });
+input.url = __input({ type: "url" });
+input.week = __input({ type: "week" });
 
 
 export const ins: HTMLElementFactory = HTMLElement.NonVoid(HTMLElement.Symbol.ins);
@@ -229,11 +238,10 @@ function __og(prefix: string): OGTagFactory {
 meta.og = __og("og") as OGTagBuilder;
 
 meta.og.article = __og("article");
+meta.og.audio = __og("og:audio");
 meta.og.book = __og("book");
 meta.og.event = __og("event");
 meta.og.product = __og("product");
-meta.og.event = __og("event");
-meta.og.audio = __og("og:audio");
 meta.og.video = __og("og:video");
 
 
@@ -287,7 +295,12 @@ export const script: ScriptFactory & {
 script.module = (): HTMLScriptElement => script().type("module");
 
 script.importmap = (map: Record<string, string> | ImportMapData): HTMLScriptElement =>
-	script({}, [JSON.stringify(isFlatImports(map) ? { imports: map } : map)]).type("importmap");
+	script({}, [
+		JSON.stringify(isFlatImports(map) ? { imports: map } : map)
+			.replace(/</g, "\\u003c")
+			.replace(/>/g, "\\u003e")
+			.replace(/&/g, "\\u0026")
+	]).type("importmap");
 
 
 export const section: HTMLElementFactory = HTMLElement.NonVoid(HTMLElement.Symbol.section);
